@@ -133,15 +133,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update progress bar for steps 2 & 3
         if (step >= 2) {
             updateProgressBar(step);
-        }
 
-        // Show/hide form steps in step23Layout
-        const formStepsAlt = document.querySelectorAll('.form-step-alt');
-        formStepsAlt.forEach(s => s.classList.add('hidden'));
+            // Show/hide form steps in step23Layout (only for steps 2 and 3)
+            const formStepsAlt = document.querySelectorAll('.form-step-alt');
+            formStepsAlt.forEach(s => s.classList.add('hidden'));
 
-        const targetStep = document.querySelector(`.form-step-alt[data-step="${step}"]`);
-        if (targetStep) {
-            targetStep.classList.remove('hidden');
+            const targetStep = document.querySelector(`.form-step-alt[data-step="${step}"]`);
+            if (targetStep) {
+                targetStep.classList.remove('hidden');
+            }
         }
 
         // Update summary on step 3
