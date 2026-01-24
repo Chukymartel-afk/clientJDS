@@ -7,7 +7,9 @@
       "Bash(git init:*)",
       "Bash(git remote add:*)",
       "Bash(git remote set-url:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nOptimisation responsive mobile du formulaire\n\n- Header mobile avec logo + téléphone\n- Grille secteurs 2 colonnes sur mobile\n- Carte promo en layout vertical\n- Boutons empilés verticalement\n- Modals plein écran\n- Inputs 16px pour éviter zoom iOS\n- Padding et espacements optimisés\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)"
     ]
   }
 }

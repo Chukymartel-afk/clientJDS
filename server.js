@@ -1,164 +1,144 @@
 const express = require('express');
-const initSqlJs = require('sql.js');
+const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // =====================================================
-// Database Setup
+// Database Setup - PostgreSQL
 // =====================================================
 
-const DB_PATH = path.join(__dirname, 'ouverture.db');
-let db;
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 async function initDatabase() {
-    const SQL = await initSqlJs();
+    const client = await pool.connect();
+    try {
+        // Create tables
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS admins (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                nom VARCHAR(255) NOT NULL,
+                email VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-    // Load existing database or create new one
-    if (fs.existsSync(DB_PATH)) {
-        const fileBuffer = fs.readFileSync(DB_PATH);
-        db = new SQL.Database(fileBuffer);
-    } else {
-        db = new SQL.Database();
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS demandes (
+                id SERIAL PRIMARY KEY,
+                company_name VARCHAR(255) NOT NULL,
+                owner_name VARCHAR(255) NOT NULL,
+                contact_name VARCHAR(255),
+                address TEXT NOT NULL,
+                city VARCHAR(255) NOT NULL,
+                postal_code VARCHAR(20) NOT NULL,
+                sector VARCHAR(100) NOT NULL,
+                annual_purchase VARCHAR(100) NOT NULL,
+                promo_accepted VARCHAR(10),
+                promo_min_order VARCHAR(100),
+                email_responsable VARCHAR(255) NOT NULL,
+                email_facturation VARCHAR(255) NOT NULL,
+                phone VARCHAR(50) NOT NULL,
+                signature TEXT NOT NULL,
+                status VARCHAR(50) DEFAULT 'nouvelle',
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Analytics tables
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS sessions (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(255) UNIQUE NOT NULL,
+                device_type VARCHAR(50),
+                browser VARCHAR(100),
+                os VARCHAR(100),
+                screen_width INTEGER,
+                screen_height INTEGER,
+                referrer TEXT,
+                utm_source VARCHAR(255),
+                utm_medium VARCHAR(255),
+                utm_campaign VARCHAR(255),
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                ended_at TIMESTAMP,
+                completed INTEGER DEFAULT 0
+            )
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS events (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(255) NOT NULL,
+                event_type VARCHAR(100) NOT NULL,
+                event_data TEXT,
+                step VARCHAR(20),
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS step_times (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(255) NOT NULL,
+                step VARCHAR(20) NOT NULL,
+                time_spent INTEGER,
+                entered_at TIMESTAMP,
+                left_at TIMESTAMP
+            )
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS field_interactions (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(255) NOT NULL,
+                field_name VARCHAR(100) NOT NULL,
+                interaction_type VARCHAR(50),
+                time_spent INTEGER,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Session store table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS "session" (
+                "sid" varchar NOT NULL COLLATE "default",
+                "sess" json NOT NULL,
+                "expire" timestamp(6) NOT NULL,
+                PRIMARY KEY ("sid")
+            )
+        `);
+
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire")
+        `);
+
+        // Create default admin if none exists
+        const adminResult = await client.query('SELECT COUNT(*) as count FROM admins');
+        if (parseInt(adminResult.rows[0].count) === 0) {
+            const hashedPassword = bcrypt.hashSync('admin123', 10);
+            await client.query(
+                'INSERT INTO admins (username, password, nom, email) VALUES ($1, $2, $3, $4)',
+                ['admin', hashedPassword, 'Administrateur', 'admin@lesjardinsdusaguenay.com']
+            );
+            console.log('Admin par défaut créé: admin / admin123');
+        }
+
+        console.log('Base de données PostgreSQL initialisée');
+    } finally {
+        client.release();
     }
-
-    // Create tables
-    db.run(`
-        CREATE TABLE IF NOT EXISTS admins (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            nom TEXT NOT NULL,
-            email TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS demandes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_name TEXT NOT NULL,
-            owner_name TEXT NOT NULL,
-            contact_name TEXT,
-            address TEXT NOT NULL,
-            city TEXT NOT NULL,
-            postal_code TEXT NOT NULL,
-            sector TEXT NOT NULL,
-            annual_purchase TEXT NOT NULL,
-            promo_accepted TEXT,
-            promo_min_order TEXT,
-            email_responsable TEXT NOT NULL,
-            email_facturation TEXT NOT NULL,
-            phone TEXT NOT NULL,
-            signature TEXT NOT NULL,
-            status TEXT DEFAULT 'nouvelle',
-            notes TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
-
-    // Analytics tables
-    db.run(`
-        CREATE TABLE IF NOT EXISTS sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT UNIQUE NOT NULL,
-            device_type TEXT,
-            browser TEXT,
-            os TEXT,
-            screen_width INTEGER,
-            screen_height INTEGER,
-            referrer TEXT,
-            utm_source TEXT,
-            utm_medium TEXT,
-            utm_campaign TEXT,
-            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            ended_at DATETIME,
-            completed INTEGER DEFAULT 0
-        )
-    `);
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            event_type TEXT NOT NULL,
-            event_data TEXT,
-            step TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS step_times (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            step TEXT NOT NULL,
-            time_spent INTEGER,
-            entered_at DATETIME,
-            left_at DATETIME
-        )
-    `);
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS field_interactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            field_name TEXT NOT NULL,
-            interaction_type TEXT,
-            time_spent INTEGER,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
-
-    // Create default admin if none exists
-    const adminCount = db.exec("SELECT COUNT(*) as count FROM admins")[0];
-    if (!adminCount || adminCount.values[0][0] === 0) {
-        const hashedPassword = bcrypt.hashSync('admin123', 10);
-        db.run(
-            'INSERT INTO admins (username, password, nom, email) VALUES (?, ?, ?, ?)',
-            ['admin', hashedPassword, 'Administrateur', 'admin@lesjardinsdusaguenay.com']
-        );
-        console.log('Admin par défaut créé: admin / admin123');
-    }
-
-    saveDatabase();
-}
-
-function saveDatabase() {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(DB_PATH, buffer);
-}
-
-// Helper function to get results as objects
-function queryAll(sql, params = []) {
-    const stmt = db.prepare(sql);
-    if (params.length > 0) {
-        stmt.bind(params);
-    }
-    const results = [];
-    while (stmt.step()) {
-        results.push(stmt.getAsObject());
-    }
-    stmt.free();
-    return results;
-}
-
-function queryOne(sql, params = []) {
-    const results = queryAll(sql, params);
-    return results.length > 0 ? results[0] : null;
-}
-
-function runQuery(sql, params = []) {
-    db.run(sql, params);
-    saveDatabase();
-    return { lastInsertRowid: db.exec("SELECT last_insert_rowid()")[0].values[0][0] };
 }
 
 // =====================================================
@@ -171,11 +151,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname)));
 
 app.use(session({
-    secret: 'jardins-saguenay-secret-key-change-in-production',
+    store: new pgSession({
+        pool: pool,
+        tableName: 'session'
+    }),
+    secret: process.env.SESSION_SECRET || 'jardins-saguenay-secret-key-change-in-production',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false, // Set to true with HTTPS
+        secure: process.env.NODE_ENV === 'production',
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
@@ -194,7 +178,7 @@ function requireAuth(req, res, next) {
 // =====================================================
 
 // Start a new session
-app.post('/api/analytics/session', (req, res) => {
+app.post('/api/analytics/session', async (req, res) => {
     try {
         const {
             sessionId,
@@ -209,15 +193,18 @@ app.post('/api/analytics/session', (req, res) => {
             utmCampaign
         } = req.body;
 
-        const now = new Date().toISOString();
-        runQuery(`
-            INSERT OR REPLACE INTO sessions (
+        await pool.query(`
+            INSERT INTO sessions (
                 session_id, device_type, browser, os, screen_width, screen_height,
-                referrer, utm_source, utm_medium, utm_campaign, started_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                referrer, utm_source, utm_medium, utm_campaign
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (session_id) DO UPDATE SET
+                device_type = EXCLUDED.device_type,
+                browser = EXCLUDED.browser,
+                os = EXCLUDED.os
         `, [
             sessionId, deviceType, browser, os, screenWidth, screenHeight,
-            referrer, utmSource, utmMedium, utmCampaign, now
+            referrer, utmSource, utmMedium, utmCampaign
         ]);
 
         res.json({ success: true });
@@ -228,15 +215,14 @@ app.post('/api/analytics/session', (req, res) => {
 });
 
 // Track an event
-app.post('/api/analytics/event', (req, res) => {
+app.post('/api/analytics/event', async (req, res) => {
     try {
         const { sessionId, eventType, eventData, step } = req.body;
-        const now = new Date().toISOString();
 
-        runQuery(`
-            INSERT INTO events (session_id, event_type, event_data, step, timestamp)
-            VALUES (?, ?, ?, ?, ?)
-        `, [sessionId, eventType, JSON.stringify(eventData || {}), step, now]);
+        await pool.query(`
+            INSERT INTO events (session_id, event_type, event_data, step)
+            VALUES ($1, $2, $3, $4)
+        `, [sessionId, eventType, JSON.stringify(eventData || {}), step]);
 
         res.json({ success: true });
     } catch (error) {
@@ -246,13 +232,13 @@ app.post('/api/analytics/event', (req, res) => {
 });
 
 // Track step timing
-app.post('/api/analytics/step-time', (req, res) => {
+app.post('/api/analytics/step-time', async (req, res) => {
     try {
         const { sessionId, step, timeSpent, enteredAt, leftAt } = req.body;
 
-        runQuery(`
+        await pool.query(`
             INSERT INTO step_times (session_id, step, time_spent, entered_at, left_at)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES ($1, $2, $3, $4, $5)
         `, [sessionId, step, timeSpent, enteredAt, leftAt]);
 
         res.json({ success: true });
@@ -263,15 +249,14 @@ app.post('/api/analytics/step-time', (req, res) => {
 });
 
 // Track field interaction
-app.post('/api/analytics/field', (req, res) => {
+app.post('/api/analytics/field', async (req, res) => {
     try {
         const { sessionId, fieldName, interactionType, timeSpent } = req.body;
-        const now = new Date().toISOString();
 
-        runQuery(`
-            INSERT INTO field_interactions (session_id, field_name, interaction_type, time_spent, timestamp)
-            VALUES (?, ?, ?, ?, ?)
-        `, [sessionId, fieldName, interactionType, timeSpent, now]);
+        await pool.query(`
+            INSERT INTO field_interactions (session_id, field_name, interaction_type, time_spent)
+            VALUES ($1, $2, $3, $4)
+        `, [sessionId, fieldName, interactionType, timeSpent]);
 
         res.json({ success: true });
     } catch (error) {
@@ -281,14 +266,13 @@ app.post('/api/analytics/field', (req, res) => {
 });
 
 // End session
-app.post('/api/analytics/session/end', (req, res) => {
+app.post('/api/analytics/session/end', async (req, res) => {
     try {
         const { sessionId, completed } = req.body;
-        const now = new Date().toISOString();
 
-        runQuery(`
-            UPDATE sessions SET ended_at = ?, completed = ? WHERE session_id = ?
-        `, [now, completed ? 1 : 0, sessionId]);
+        await pool.query(`
+            UPDATE sessions SET ended_at = NOW(), completed = $1 WHERE session_id = $2
+        `, [completed ? 1 : 0, sessionId]);
 
         res.json({ success: true });
     } catch (error) {
@@ -301,74 +285,69 @@ app.post('/api/analytics/session/end', (req, res) => {
 // API Routes - Analytics Stats (admin only)
 // =====================================================
 
-app.get('/api/analytics/overview', requireAuth, (req, res) => {
+app.get('/api/analytics/overview', requireAuth, async (req, res) => {
     try {
         const days = parseInt(req.query.days) || 30;
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
-        const startDateStr = startDate.toISOString();
 
         // Total sessions
-        const totalSessions = queryOne(
-            'SELECT COUNT(*) as count FROM sessions WHERE started_at >= ?',
-            [startDateStr]
-        ).count;
+        const totalResult = await pool.query(
+            `SELECT COUNT(*) as count FROM sessions WHERE started_at >= NOW() - INTERVAL '${days} days'`
+        );
+        const totalSessions = parseInt(totalResult.rows[0].count);
 
         // Completed sessions
-        const completedSessions = queryOne(
-            'SELECT COUNT(*) as count FROM sessions WHERE started_at >= ? AND completed = 1',
-            [startDateStr]
-        ).count;
+        const completedResult = await pool.query(
+            `SELECT COUNT(*) as count FROM sessions WHERE started_at >= NOW() - INTERVAL '${days} days' AND completed = 1`
+        );
+        const completedSessions = parseInt(completedResult.rows[0].count);
 
         // Conversion rate
         const conversionRate = totalSessions > 0 ? ((completedSessions / totalSessions) * 100).toFixed(1) : 0;
 
-        // Average time on form (for completed sessions)
-        const avgTimeResult = queryOne(`
-            SELECT AVG(
-                CAST((julianday(ended_at) - julianday(started_at)) * 86400 AS INTEGER)
-            ) as avg_time
+        // Average time on form
+        const avgTimeResult = await pool.query(`
+            SELECT AVG(EXTRACT(EPOCH FROM (ended_at - started_at))) as avg_time
             FROM sessions
-            WHERE started_at >= ? AND completed = 1 AND ended_at IS NOT NULL
-        `, [startDateStr]);
-        const avgTimeOnForm = avgTimeResult.avg_time ? Math.round(avgTimeResult.avg_time) : 0;
+            WHERE started_at >= NOW() - INTERVAL '${days} days' AND completed = 1 AND ended_at IS NOT NULL
+        `);
+        const avgTimeOnForm = avgTimeResult.rows[0].avg_time ? Math.round(avgTimeResult.rows[0].avg_time) : 0;
 
         // Device breakdown
-        const devices = queryAll(`
+        const devicesResult = await pool.query(`
             SELECT device_type, COUNT(*) as count
             FROM sessions
-            WHERE started_at >= ?
+            WHERE started_at >= NOW() - INTERVAL '${days} days'
             GROUP BY device_type
-        `, [startDateStr]);
+        `);
 
         // Sessions by day
-        const sessionsByDay = queryAll(`
+        const sessionsByDayResult = await pool.query(`
             SELECT DATE(started_at) as date,
                    COUNT(*) as total,
                    SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completed
             FROM sessions
-            WHERE started_at >= ?
+            WHERE started_at >= NOW() - INTERVAL '${days} days'
             GROUP BY DATE(started_at)
             ORDER BY date ASC
-        `, [startDateStr]);
+        `);
 
         // Sessions by hour
-        const sessionsByHour = queryAll(`
-            SELECT CAST(strftime('%H', started_at) AS INTEGER) as hour, COUNT(*) as count
+        const sessionsByHourResult = await pool.query(`
+            SELECT EXTRACT(HOUR FROM started_at)::INTEGER as hour, COUNT(*) as count
             FROM sessions
-            WHERE started_at >= ?
+            WHERE started_at >= NOW() - INTERVAL '${days} days'
             GROUP BY hour
             ORDER BY hour ASC
-        `, [startDateStr]);
+        `);
 
         res.json({
             totalSessions,
             completedSessions,
             conversionRate: parseFloat(conversionRate),
             avgTimeOnForm,
-            devices,
-            sessionsByDay,
-            sessionsByHour
+            devices: devicesResult.rows,
+            sessionsByDay: sessionsByDayResult.rows,
+            sessionsByHour: sessionsByHourResult.rows
         });
     } catch (error) {
         console.error('Analytics overview error:', error);
@@ -376,80 +355,68 @@ app.get('/api/analytics/overview', requireAuth, (req, res) => {
     }
 });
 
-app.get('/api/analytics/funnel', requireAuth, (req, res) => {
+app.get('/api/analytics/funnel', requireAuth, async (req, res) => {
     try {
         const days = parseInt(req.query.days) || 30;
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
-        const startDateStr = startDate.toISOString();
 
-        // Get step completion counts
         const steps = ['1', '2', '3', 'success'];
         const funnel = [];
 
         for (const step of steps) {
-            const count = queryOne(`
+            const result = await pool.query(`
                 SELECT COUNT(DISTINCT session_id) as count
                 FROM step_times
-                WHERE step = ? AND session_id IN (
-                    SELECT session_id FROM sessions WHERE started_at >= ?
+                WHERE step = $1 AND session_id IN (
+                    SELECT session_id FROM sessions WHERE started_at >= NOW() - INTERVAL '${days} days'
                 )
-            `, [step, startDateStr]).count;
-            funnel.push({ step, count });
+            `, [step]);
+            funnel.push({ step, count: parseInt(result.rows[0].count) });
         }
 
-        // Average time per step
-        const stepTimes = queryAll(`
+        const stepTimesResult = await pool.query(`
             SELECT step, AVG(time_spent) as avg_time
             FROM step_times
             WHERE session_id IN (
-                SELECT session_id FROM sessions WHERE started_at >= ?
+                SELECT session_id FROM sessions WHERE started_at >= NOW() - INTERVAL '${days} days'
             )
             GROUP BY step
-        `, [startDateStr]);
+        `);
 
-        res.json({ funnel, stepTimes });
+        res.json({ funnel, stepTimes: stepTimesResult.rows });
     } catch (error) {
         console.error('Analytics funnel error:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
-app.get('/api/analytics/promo', requireAuth, (req, res) => {
+app.get('/api/analytics/promo', requireAuth, async (req, res) => {
     try {
         const days = parseInt(req.query.days) || 30;
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
-        const startDateStr = startDate.toISOString();
 
-        // Promo card interactions
-        const promoShown = queryOne(`
+        const promoShownResult = await pool.query(`
             SELECT COUNT(*) as count FROM events
-            WHERE event_type = 'promo_shown' AND timestamp >= ?
-        `, [startDateStr]).count;
+            WHERE event_type = 'promo_shown' AND timestamp >= NOW() - INTERVAL '${days} days'
+        `);
 
-        const promoAccepted = queryOne(`
+        const promoAcceptedResult = await pool.query(`
             SELECT COUNT(*) as count FROM events
-            WHERE event_type = 'promo_accepted' AND timestamp >= ?
-        `, [startDateStr]).count;
+            WHERE event_type = 'promo_accepted' AND timestamp >= NOW() - INTERVAL '${days} days'
+        `);
 
-        const promoRefused = queryOne(`
+        const promoRefusedResult = await pool.query(`
             SELECT COUNT(*) as count FROM events
-            WHERE event_type = 'promo_refused' AND timestamp >= ?
-        `, [startDateStr]).count;
+            WHERE event_type = 'promo_refused' AND timestamp >= NOW() - INTERVAL '${days} days'
+        `);
 
-        // Time viewing promo card before decision
-        const avgPromoViewTime = queryOne(`
-            SELECT AVG(CAST(json_extract(event_data, '$.viewTime') AS INTEGER)) as avg_time
-            FROM events
-            WHERE event_type IN ('promo_accepted', 'promo_refused') AND timestamp >= ?
-        `, [startDateStr]).avg_time || 0;
+        const promoShown = parseInt(promoShownResult.rows[0].count);
+        const promoAccepted = parseInt(promoAcceptedResult.rows[0].count);
+        const promoRefused = parseInt(promoRefusedResult.rows[0].count);
 
         res.json({
             promoShown,
             promoAccepted,
             promoRefused,
-            avgPromoViewTime: Math.round(avgPromoViewTime),
+            avgPromoViewTime: 0,
             acceptanceRate: promoShown > 0 ? ((promoAccepted / promoShown) * 100).toFixed(1) : 0
         });
     } catch (error) {
@@ -458,68 +425,56 @@ app.get('/api/analytics/promo', requireAuth, (req, res) => {
     }
 });
 
-app.get('/api/analytics/abandons', requireAuth, (req, res) => {
+app.get('/api/analytics/abandons', requireAuth, async (req, res) => {
     try {
         const days = parseInt(req.query.days) || 30;
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
-        const startDateStr = startDate.toISOString();
 
-        // Abandons by step
-        const abandonsByStep = queryAll(`
+        const abandonsByStepResult = await pool.query(`
             SELECT st.step, COUNT(DISTINCT st.session_id) as count
             FROM step_times st
             JOIN sessions s ON st.session_id = s.session_id
-            WHERE s.started_at >= ? AND s.completed = 0
-            AND st.step = (
-                SELECT step FROM step_times
-                WHERE session_id = st.session_id
-                ORDER BY left_at DESC LIMIT 1
-            )
+            WHERE s.started_at >= NOW() - INTERVAL '${days} days' AND s.completed = 0
             GROUP BY st.step
-        `, [startDateStr]);
+        `);
 
-        // Fields with most focus time before abandon
-        const fieldAbandonData = queryAll(`
+        const fieldAbandonResult = await pool.query(`
             SELECT fi.field_name,
                    COUNT(*) as abandon_count,
                    AVG(fi.time_spent) as avg_time
             FROM field_interactions fi
             JOIN sessions s ON fi.session_id = s.session_id
-            WHERE s.started_at >= ? AND s.completed = 0
+            WHERE s.started_at >= NOW() - INTERVAL '${days} days' AND s.completed = 0
             GROUP BY fi.field_name
             ORDER BY abandon_count DESC
             LIMIT 10
-        `, [startDateStr]);
+        `);
 
-        res.json({ abandonsByStep, fieldAbandonData });
+        res.json({
+            abandonsByStep: abandonsByStepResult.rows,
+            fieldAbandonData: fieldAbandonResult.rows
+        });
     } catch (error) {
         console.error('Analytics abandons error:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
-app.get('/api/analytics/sources', requireAuth, (req, res) => {
+app.get('/api/analytics/sources', requireAuth, async (req, res) => {
     try {
         const days = parseInt(req.query.days) || 30;
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
-        const startDateStr = startDate.toISOString();
 
-        // Traffic sources
-        const sources = queryAll(`
+        const sourcesResult = await pool.query(`
             SELECT
                 COALESCE(utm_source, 'direct') as source,
                 COUNT(*) as total,
                 SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completed
             FROM sessions
-            WHERE started_at >= ?
+            WHERE started_at >= NOW() - INTERVAL '${days} days'
             GROUP BY COALESCE(utm_source, 'direct')
             ORDER BY total DESC
-        `, [startDateStr]);
+        `);
 
-        // Referrers
-        const referrers = queryAll(`
+        const referrersResult = await pool.query(`
             SELECT
                 CASE
                     WHEN referrer IS NULL OR referrer = '' THEN 'Direct'
@@ -527,48 +482,42 @@ app.get('/api/analytics/sources', requireAuth, (req, res) => {
                 END as referrer,
                 COUNT(*) as count
             FROM sessions
-            WHERE started_at >= ?
+            WHERE started_at >= NOW() - INTERVAL '${days} days'
             GROUP BY referrer
             ORDER BY count DESC
             LIMIT 10
-        `, [startDateStr]);
+        `);
 
-        res.json({ sources, referrers });
+        res.json({ sources: sourcesResult.rows, referrers: referrersResult.rows });
     } catch (error) {
         console.error('Analytics sources error:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
-app.get('/api/analytics/realtime', requireAuth, (req, res) => {
+app.get('/api/analytics/realtime', requireAuth, async (req, res) => {
     try {
-        const fiveMinutesAgo = new Date();
-        fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5);
-        const fiveMinutesAgoStr = fiveMinutesAgo.toISOString();
-
-        // Active sessions (with activity in last 5 minutes)
-        const activeSessions = queryAll(`
+        const activeSessionsResult = await pool.query(`
             SELECT DISTINCT s.session_id, s.device_type, s.started_at,
                    (SELECT step FROM step_times WHERE session_id = s.session_id ORDER BY entered_at DESC LIMIT 1) as current_step
             FROM sessions s
             JOIN events e ON s.session_id = e.session_id
-            WHERE e.timestamp >= ?
+            WHERE e.timestamp >= NOW() - INTERVAL '5 minutes'
             ORDER BY e.timestamp DESC
-        `, [fiveMinutesAgoStr]);
+        `);
 
-        // Recent completions
-        const recentCompletions = queryAll(`
+        const recentCompletionsResult = await pool.query(`
             SELECT session_id, ended_at
             FROM sessions
-            WHERE completed = 1 AND ended_at >= ?
+            WHERE completed = 1 AND ended_at >= NOW() - INTERVAL '5 minutes'
             ORDER BY ended_at DESC
             LIMIT 10
-        `, [fiveMinutesAgoStr]);
+        `);
 
         res.json({
-            activeCount: activeSessions.length,
-            activeSessions,
-            recentCompletions
+            activeCount: activeSessionsResult.rows.length,
+            activeSessions: activeSessionsResult.rows,
+            recentCompletions: recentCompletionsResult.rows
         });
     } catch (error) {
         console.error('Analytics realtime error:', error);
@@ -581,7 +530,7 @@ app.get('/api/analytics/realtime', requireAuth, (req, res) => {
 // =====================================================
 
 // Submit new demande (public)
-app.post('/api/demandes', (req, res) => {
+app.post('/api/demandes', async (req, res) => {
     try {
         const {
             companyName,
@@ -600,13 +549,13 @@ app.post('/api/demandes', (req, res) => {
             signature
         } = req.body;
 
-        const now = new Date().toISOString();
-        const result = runQuery(`
+        const result = await pool.query(`
             INSERT INTO demandes (
                 company_name, owner_name, contact_name, address, city, postal_code,
                 sector, annual_purchase, promo_accepted, promo_min_order,
-                email_responsable, email_facturation, phone, signature, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                email_responsable, email_facturation, phone, signature
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            RETURNING id
         `, [
             companyName,
             ownerName,
@@ -621,15 +570,13 @@ app.post('/api/demandes', (req, res) => {
             emailResponsable,
             emailFacturation,
             phone,
-            signature,
-            now,
-            now
+            signature
         ]);
 
         res.json({
             success: true,
             message: 'Demande soumise avec succès',
-            id: result.lastInsertRowid
+            id: result.rows[0].id
         });
     } catch (error) {
         console.error('Erreur:', error);
@@ -638,21 +585,21 @@ app.post('/api/demandes', (req, res) => {
 });
 
 // Get all demandes (admin only)
-app.get('/api/demandes', requireAuth, (req, res) => {
+app.get('/api/demandes', requireAuth, async (req, res) => {
     try {
-        const demandes = queryAll('SELECT * FROM demandes ORDER BY created_at DESC');
-        res.json(demandes);
+        const result = await pool.query('SELECT * FROM demandes ORDER BY created_at DESC');
+        res.json(result.rows);
     } catch (error) {
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
 // Get single demande (admin only)
-app.get('/api/demandes/:id', requireAuth, (req, res) => {
+app.get('/api/demandes/:id', requireAuth, async (req, res) => {
     try {
-        const demande = queryOne('SELECT * FROM demandes WHERE id = ?', [parseInt(req.params.id)]);
-        if (demande) {
-            res.json(demande);
+        const result = await pool.query('SELECT * FROM demandes WHERE id = $1', [parseInt(req.params.id)]);
+        if (result.rows.length > 0) {
+            res.json(result.rows[0]);
         } else {
             res.status(404).json({ error: 'Demande non trouvée' });
         }
@@ -662,13 +609,12 @@ app.get('/api/demandes/:id', requireAuth, (req, res) => {
 });
 
 // Update demande status (admin only)
-app.patch('/api/demandes/:id', requireAuth, (req, res) => {
+app.patch('/api/demandes/:id', requireAuth, async (req, res) => {
     try {
         const { status, notes } = req.body;
-        const now = new Date().toISOString();
-        runQuery(
-            'UPDATE demandes SET status = ?, notes = ?, updated_at = ? WHERE id = ?',
-            [status, notes, now, parseInt(req.params.id)]
+        await pool.query(
+            'UPDATE demandes SET status = $1, notes = $2, updated_at = NOW() WHERE id = $3',
+            [status, notes, parseInt(req.params.id)]
         );
         res.json({ success: true });
     } catch (error) {
@@ -677,9 +623,9 @@ app.patch('/api/demandes/:id', requireAuth, (req, res) => {
 });
 
 // Delete demande (admin only)
-app.delete('/api/demandes/:id', requireAuth, (req, res) => {
+app.delete('/api/demandes/:id', requireAuth, async (req, res) => {
     try {
-        runQuery('DELETE FROM demandes WHERE id = ?', [parseInt(req.params.id)]);
+        await pool.query('DELETE FROM demandes WHERE id = $1', [parseInt(req.params.id)]);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Erreur serveur' });
@@ -691,12 +637,13 @@ app.delete('/api/demandes/:id', requireAuth, (req, res) => {
 // =====================================================
 
 // Login
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-        const admin = queryOne('SELECT * FROM admins WHERE username = ?', [username]);
+        const result = await pool.query('SELECT * FROM admins WHERE username = $1', [username]);
 
-        if (admin && bcrypt.compareSync(password, admin.password)) {
+        if (result.rows.length > 0 && bcrypt.compareSync(password, result.rows[0].password)) {
+            const admin = result.rows[0];
             req.session.adminId = admin.id;
             req.session.adminName = admin.nom;
             res.json({
@@ -718,10 +665,14 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // Check auth status
-app.get('/api/auth/me', (req, res) => {
+app.get('/api/auth/me', async (req, res) => {
     if (req.session.adminId) {
-        const admin = queryOne('SELECT id, username, nom, email FROM admins WHERE id = ?', [req.session.adminId]);
-        res.json({ authenticated: true, admin });
+        const result = await pool.query('SELECT id, username, nom, email FROM admins WHERE id = $1', [req.session.adminId]);
+        if (result.rows.length > 0) {
+            res.json({ authenticated: true, admin: result.rows[0] });
+        } else {
+            res.json({ authenticated: false });
+        }
     } else {
         res.json({ authenticated: false });
     }
@@ -732,47 +683,45 @@ app.get('/api/auth/me', (req, res) => {
 // =====================================================
 
 // Get all admins (admin only)
-app.get('/api/admins', requireAuth, (req, res) => {
+app.get('/api/admins', requireAuth, async (req, res) => {
     try {
-        const admins = queryAll('SELECT id, username, nom, email, created_at FROM admins');
-        res.json(admins);
+        const result = await pool.query('SELECT id, username, nom, email, created_at FROM admins');
+        res.json(result.rows);
     } catch (error) {
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
 // Create new admin (admin only)
-app.post('/api/admins', requireAuth, (req, res) => {
+app.post('/api/admins', requireAuth, async (req, res) => {
     try {
         const { username, password, nom, email } = req.body;
 
-        // Check if username exists
-        const existing = queryOne('SELECT id FROM admins WHERE username = ?', [username]);
-        if (existing) {
+        const existing = await pool.query('SELECT id FROM admins WHERE username = $1', [username]);
+        if (existing.rows.length > 0) {
             return res.status(400).json({ error: 'Ce nom d\'utilisateur existe déjà' });
         }
 
         const hashedPassword = bcrypt.hashSync(password, 10);
-        const result = runQuery(
-            'INSERT INTO admins (username, password, nom, email) VALUES (?, ?, ?, ?)',
+        const result = await pool.query(
+            'INSERT INTO admins (username, password, nom, email) VALUES ($1, $2, $3, $4) RETURNING id',
             [username, hashedPassword, nom, email]
         );
 
-        res.json({ success: true, id: result.lastInsertRowid });
+        res.json({ success: true, id: result.rows[0].id });
     } catch (error) {
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
 // Delete admin (admin only)
-app.delete('/api/admins/:id', requireAuth, (req, res) => {
+app.delete('/api/admins/:id', requireAuth, async (req, res) => {
     try {
-        // Prevent deleting yourself
         if (parseInt(req.params.id) === req.session.adminId) {
             return res.status(400).json({ error: 'Vous ne pouvez pas supprimer votre propre compte' });
         }
 
-        runQuery('DELETE FROM admins WHERE id = ?', [parseInt(req.params.id)]);
+        await pool.query('DELETE FROM admins WHERE id = $1', [parseInt(req.params.id)]);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Erreur serveur' });
@@ -783,22 +732,22 @@ app.delete('/api/admins/:id', requireAuth, (req, res) => {
 // API Routes - Stats
 // =====================================================
 
-app.get('/api/stats', requireAuth, (req, res) => {
+app.get('/api/stats', requireAuth, async (req, res) => {
     try {
-        const total = queryOne('SELECT COUNT(*) as count FROM demandes').count;
-        const nouvelles = queryOne("SELECT COUNT(*) as count FROM demandes WHERE status = 'nouvelle'").count;
-        const enCours = queryOne("SELECT COUNT(*) as count FROM demandes WHERE status = 'en_cours'").count;
-        const approuvees = queryOne("SELECT COUNT(*) as count FROM demandes WHERE status = 'approuvee'").count;
-        const refusees = queryOne("SELECT COUNT(*) as count FROM demandes WHERE status = 'refusee'").count;
-        const promoAcceptees = queryOne("SELECT COUNT(*) as count FROM demandes WHERE promo_accepted = 'yes'").count;
+        const total = await pool.query('SELECT COUNT(*) as count FROM demandes');
+        const nouvelles = await pool.query("SELECT COUNT(*) as count FROM demandes WHERE status = 'nouvelle'");
+        const enCours = await pool.query("SELECT COUNT(*) as count FROM demandes WHERE status = 'en_cours'");
+        const approuvees = await pool.query("SELECT COUNT(*) as count FROM demandes WHERE status = 'approuvee'");
+        const refusees = await pool.query("SELECT COUNT(*) as count FROM demandes WHERE status = 'refusee'");
+        const promoAcceptees = await pool.query("SELECT COUNT(*) as count FROM demandes WHERE promo_accepted = 'yes'");
 
         res.json({
-            total,
-            nouvelles,
-            enCours,
-            approuvees,
-            refusees,
-            promoAcceptees
+            total: parseInt(total.rows[0].count),
+            nouvelles: parseInt(nouvelles.rows[0].count),
+            enCours: parseInt(enCours.rows[0].count),
+            approuvees: parseInt(approuvees.rows[0].count),
+            refusees: parseInt(refusees.rows[0].count),
+            promoAcceptees: parseInt(promoAcceptees.rows[0].count)
         });
     } catch (error) {
         res.status(500).json({ error: 'Erreur serveur' });
@@ -830,6 +779,8 @@ initDatabase().then(() => {
 ║  Formulaire:  http://localhost:${PORT}                       ║
 ║  Admin:       http://localhost:${PORT}/admin                 ║
 ║  Dashboard:   http://localhost:${PORT}/admin/dashboard       ║
+╠════════════════════════════════════════════════════════════╣
+║  Base de données: PostgreSQL (Cloud)                      ║
 ╠════════════════════════════════════════════════════════════╣
 ║  Identifiants par défaut:                                 ║
 ║  Username: admin                                          ║
