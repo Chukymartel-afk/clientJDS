@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Dashboard | Les Jardins du Saguenay</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#FF7A00",
+                        "primary-dark": "#E66E00",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .status-nouvelle { background: #dbeafe; color: #1e40af; }
+        .status-en_cours { background: #fef3c7; color: #92400e; }
+        .status-approuvee { background: #d1fae5; color: #065f46; }
+        .status-refusee { background: #fee2e2; color: #991b1b; }
+        .font-signature { font-family: 'Dancing Script', cursive; }
+    </style>
+</head>
+<body class="bg-gray-100 font-display">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-4">
+                    <img src="../assets/logo.png" alt="Logo" class="h-10"/>
+                    <div class="hidden sm:block">
+                        <h1 class="text-lg font-bold text-gray-900">Administration</h1>
+                        <p class="text-xs text-gray-500">Demandes d'ouverture de compte</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm text-gray-600" id="adminName">Admin</span>
+                    <button
+                        id="logoutBtn"
+                        class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                        <span class="material-symbols-outlined text-lg">logout</span>
+                        <span class="hidden sm:inline">Déconnexion</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <div class="flex items-center gap-3">
+                    <div class="size-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-gray-600">folder</span>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-bold text-gray-900" id="statTotal">0</p>
+                        <p class="text-xs text-gray-500">Total</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <div class="flex items-center gap-3">
+                    <div class="size-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-blue-600">mark_email_unread</span>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-bold text-blue-600" id="statNouvelles">0</p>
+                        <p class="text-xs text-gray-500">Nouvelles</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <div class="flex items-center gap-3">
+                    <div class="size-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-yellow-600">pending</span>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-bold text-yellow-600" id="statEnCours">0</p>
+                        <p class="text-xs text-gray-500">En cours</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <div class="flex items-center gap-3">
+                    <div class="size-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-green-600">check_circle</span>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-bold text-green-600" id="statApprouvees">0</p>
+                        <p class="text-xs text-gray-500">Approuvées</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <div class="flex items-center gap-3">
+                    <div class="size-10 bg-red-100 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-red-600">cancel</span>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-bold text-red-600" id="statRefusees">0</p>
+                        <p class="text-xs text-gray-500">Refusées</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <div class="flex items-center gap-3">
+                    <div class="size-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-primary">percent</span>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-bold text-primary" id="statPromo">0</p>
+                        <p class="text-xs text-gray-500">Avec promo</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex items-center gap-2 mb-6 border-b border-gray-200">
+            <button class="tab-btn active px-4 py-3 text-sm font-medium border-b-2 border-primary text-primary" data-tab="demandes">
+                Demandes
+            </button>
+            <button class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700" data-tab="analytics">
+                <span class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">analytics</span>
+                    Analytics
+                </span>
+            </button>
+            <button class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700" data-tab="admins">
+                Administrateurs
+            </button>
+        </div>
+
+        <!-- Demandes Tab -->
+        <div id="demandesTab">
+            <!-- Filters -->
+            <div class="flex flex-wrap items-center gap-4 mb-6">
+                <div class="flex-1 min-w-[200px]">
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                        <input
+                            type="text"
+                            id="searchInput"
+                            placeholder="Rechercher une entreprise..."
+                            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                        />
+                    </div>
+                </div>
+                <select id="filterStatus" class="px-4 py-2 border border-gray-300 rounded-lg focus:border-primary outline-none">
+                    <option value="">Tous les statuts</option>
+                    <option value="nouvelle">Nouvelles</option>
+                    <option value="en_cours">En cours</option>
+                    <option value="approuvee">Approuvées</option>
+                    <option value="refusee">Refusées</option>
+                </select>
+                <button id="refreshBtn" class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                    <span class="material-symbols-outlined text-lg">refresh</span>
+                    Actualiser
+                </button>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Entreprise</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Secteur</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Volume annuel</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Promo</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Statut</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="demandesTable" class="divide-y divide-gray-200">
+                            <!-- Rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="emptyState" class="hidden p-12 text-center">
+                    <span class="material-symbols-outlined text-6xl text-gray-300 mb-4">inbox</span>
+                    <p class="text-gray-500">Aucune demande trouvée</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analyticsTab" class="hidden">
+            <!-- Period Selector -->
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-bold text-gray-900">Statistiques du formulaire</h2>
+                <select id="analyticsPeriod" class="px-4 py-2 border border-gray-300 rounded-lg focus:border-primary outline-none">
+                    <option value="7">7 derniers jours</option>
+                    <option value="30" selected>30 derniers jours</option>
+                    <option value="90">90 derniers jours</option>
+                </select>
+            </div>
+
+            <!-- Analytics Overview Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="material-symbols-outlined text-2xl text-blue-500">visibility</span>
+                        <span class="text-xs text-gray-400">Visiteurs</span>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900" id="analyticsVisitors">-</p>
+                    <p class="text-sm text-gray-500 mt-1">Sessions totales</p>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="material-symbols-outlined text-2xl text-green-500">check_circle</span>
+                        <span class="text-xs text-gray-400">Conversions</span>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900" id="analyticsCompletions">-</p>
+                    <p class="text-sm text-gray-500 mt-1">Formulaires complétés</p>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="material-symbols-outlined text-2xl text-primary">trending_up</span>
+                        <span class="text-xs text-gray-400">Taux</span>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900" id="analyticsConversionRate">-</p>
+                    <p class="text-sm text-gray-500 mt-1">Taux de conversion</p>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="material-symbols-outlined text-2xl text-purple-500">schedule</span>
+                        <span class="text-xs text-gray-400">Durée</span>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900" id="analyticsAvgTime">-</p>
+                    <p class="text-sm text-gray-500 mt-1">Temps moyen</p>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <!-- Sessions Over Time Chart -->
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Sessions par jour</h3>
+                    <div class="h-64">
+                        <canvas id="sessionsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Funnel Chart -->
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Entonnoir de conversion</h3>
+                    <div id="funnelChart" class="space-y-3">
+                        <!-- Funnel bars will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Second Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Promo Stats -->
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Carte Promo 2%</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">Affichée</span>
+                            <span class="font-bold text-gray-900" id="promoShown">-</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">Acceptée</span>
+                            <span class="font-bold text-green-600" id="promoAccepted">-</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">Refusée</span>
+                            <span class="font-bold text-red-600" id="promoRefused">-</span>
+                        </div>
+                        <div class="pt-4 border-t border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600">Taux d'acceptation</span>
+                                <span class="font-bold text-primary text-xl" id="promoAcceptanceRate">-</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">Temps de réflexion moyen</span>
+                            <span class="font-bold text-gray-900" id="promoViewTime">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Devices -->
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Appareils</h3>
+                    <div class="h-48">
+                        <canvas id="devicesChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Peak Hours -->
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Heures de pointe</h3>
+                    <div class="h-48">
+                        <canvas id="hoursChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step Times -->
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-8">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">Temps moyen par étape</h3>
+                <div class="grid grid-cols-4 gap-4" id="stepTimesContainer">
+                    <!-- Step time cards will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Abandonment Analysis -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Abandons by Step -->
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Abandons par étape</h3>
+                    <div id="abandonsByStep" class="space-y-3">
+                        <!-- Abandon bars will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Realtime -->
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">En temps réel</h3>
+                        <div class="flex items-center gap-2">
+                            <span class="relative flex h-3 w-3">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                            </span>
+                            <span class="text-sm text-gray-500">Actualisé auto</span>
+                        </div>
+                    </div>
+                    <div class="text-center py-8">
+                        <p class="text-5xl font-bold text-gray-900" id="realtimeActive">0</p>
+                        <p class="text-gray-500 mt-2">visiteurs actifs maintenant</p>
+                    </div>
+                    <div id="realtimeSessions" class="mt-4 space-y-2 max-h-40 overflow-y-auto">
+                        <!-- Active sessions will be listed here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admins Tab -->
+        <div id="adminsTab" class="hidden">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-bold text-gray-900">Gestion des administrateurs</h2>
+                <button
+                    id="addAdminBtn"
+                    class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                >
+                    <span class="material-symbols-outlined text-lg">person_add</span>
+                    Ajouter un admin
+                </button>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nom</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Utilisateur</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Créé le</th>
+                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminsTable" class="divide-y divide-gray-200">
+                        <!-- Rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal: Demande Details -->
+    <div id="demandeModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 class="text-xl font-bold text-gray-900">Détails de la demande</h3>
+                <button class="close-modal size-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1" id="demandeDetails">
+                <!-- Content loaded dynamically -->
+            </div>
+            <div class="p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between gap-4">
+                <select id="statusSelect" class="px-4 py-2 border border-gray-300 rounded-lg focus:border-primary outline-none">
+                    <option value="nouvelle">Nouvelle</option>
+                    <option value="en_cours">En cours</option>
+                    <option value="approuvee">Approuvée</option>
+                    <option value="refusee">Refusée</option>
+                </select>
+                <div class="flex gap-2">
+                    <button id="deleteDemandeBtn" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">delete</span>
+                        Supprimer
+                    </button>
+                    <button id="saveStatusBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">save</span>
+                        Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Admin -->
+    <div id="addAdminModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 class="text-xl font-bold text-gray-900">Nouvel administrateur</h3>
+                <button class="close-modal size-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form id="addAdminForm" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nom complet</label>
+                    <input type="text" name="nom" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-primary outline-none"/>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nom d'utilisateur</label>
+                    <input type="text" name="username" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-primary outline-none"/>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" name="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-primary outline-none"/>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
+                    <input type="password" name="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-primary outline-none"/>
+                </div>
+                <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-primary-dark transition-colors">
+                    Créer l'administrateur
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentDemandeId = null;
+        let sessionsChart = null;
+        let devicesChart = null;
+        let hoursChart = null;
+        let realtimeInterval = null;
+
+        // =====================================================
+        // Auth Check
+        // =====================================================
+
+        async function checkAuth() {
+            const res = await fetch('/api/auth/me');
+            const data = await res.json();
+            if (!data.authenticated) {
+                window.location.href = '/admin';
+            } else {
+                document.getElementById('adminName').textContent = data.admin.nom;
+            }
+        }
+        checkAuth();
+
+        // =====================================================
+        // Logout
+        // =====================================================
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/admin';
+        });
+
+        // =====================================================
+        // Tabs
+        // =====================================================
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active', 'border-primary', 'text-primary');
+                    b.classList.add('border-transparent', 'text-gray-500');
+                });
+                btn.classList.add('active', 'border-primary', 'text-primary');
+                btn.classList.remove('border-transparent', 'text-gray-500');
+
+                const tab = btn.dataset.tab;
+                document.getElementById('demandesTab').classList.toggle('hidden', tab !== 'demandes');
+                document.getElementById('analyticsTab').classList.toggle('hidden', tab !== 'analytics');
+                document.getElementById('adminsTab').classList.toggle('hidden', tab !== 'admins');
+
+                if (tab === 'admins') loadAdmins();
+                if (tab === 'analytics') {
+                    loadAnalytics();
+                    startRealtimeUpdates();
+                } else {
+                    stopRealtimeUpdates();
+                }
+            });
+        });
+
+        // =====================================================
+        // Load Stats
+        // =====================================================
+
+        async function loadStats() {
+            const res = await fetch('/api/stats');
+            const stats = await res.json();
+            document.getElementById('statTotal').textContent = stats.total;
+            document.getElementById('statNouvelles').textContent = stats.nouvelles;
+            document.getElementById('statEnCours').textContent = stats.enCours;
+            document.getElementById('statApprouvees').textContent = stats.approuvees;
+            document.getElementById('statRefusees').textContent = stats.refusees;
+            document.getElementById('statPromo').textContent = stats.promoAcceptees;
+        }
+        loadStats();
+
+        // =====================================================
+        // Load Demandes
+        // =====================================================
+
+        async function loadDemandes() {
+            const res = await fetch('/api/demandes');
+            const demandes = await res.json();
+            renderDemandes(demandes);
+        }
+        loadDemandes();
+
+        function renderDemandes(demandes) {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const status = document.getElementById('filterStatus').value;
+
+            let filtered = demandes.filter(d => {
+                const matchSearch = d.company_name.toLowerCase().includes(search) ||
+                                   d.owner_name.toLowerCase().includes(search);
+                const matchStatus = !status || d.status === status;
+                return matchSearch && matchStatus;
+            });
+
+            const table = document.getElementById('demandesTable');
+            const empty = document.getElementById('emptyState');
+
+            if (filtered.length === 0) {
+                table.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+
+            const sectorLabels = {
+                'restaurant': 'Restaurant',
+                'epicerie': 'Épicerie',
+                'hotel': 'Hôtel',
+                'institution': 'Institution',
+                'autre': 'Autre'
+            };
+
+            const statusLabels = {
+                'nouvelle': 'Nouvelle',
+                'en_cours': 'En cours',
+                'approuvee': 'Approuvée',
+                'refusee': 'Refusée'
+            };
+
+            table.innerHTML = filtered.map(d => `
+                <tr class="hover:bg-gray-50 cursor-pointer" onclick="openDemande(${d.id})">
+                    <td class="px-6 py-4">
+                        <div class="font-medium text-gray-900">${d.company_name}</div>
+                        <div class="text-sm text-gray-500">${d.owner_name}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${sectorLabels[d.sector] || d.sector}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">$${parseInt(d.annual_purchase.replace(/\s/g, '')).toLocaleString('fr-CA')}</td>
+                    <td class="px-6 py-4">
+                        ${d.promo_accepted === 'yes'
+                            ? '<span class="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium"><span class="material-symbols-outlined text-sm">percent</span>2%</span>'
+                            : '<span class="text-gray-400 text-sm">Non</span>'}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-3 py-1 rounded-full text-xs font-medium status-${d.status}">${statusLabels[d.status]}</span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${new Date(d.created_at).toLocaleDateString('fr-CA')}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button class="text-primary hover:text-primary-dark">
+                            <span class="material-symbols-outlined">visibility</span>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Filters
+        document.getElementById('searchInput').addEventListener('input', () => loadDemandes());
+        document.getElementById('filterStatus').addEventListener('change', () => loadDemandes());
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            loadDemandes();
+            loadStats();
+        });
+
+        // =====================================================
+        // Analytics
+        // =====================================================
+
+        document.getElementById('analyticsPeriod').addEventListener('change', loadAnalytics);
+
+        async function loadAnalytics() {
+            const days = document.getElementById('analyticsPeriod').value;
+
+            // Load all analytics data in parallel
+            const [overview, funnel, promo, abandons] = await Promise.all([
+                fetch(`/api/analytics/overview?days=${days}`).then(r => r.json()).catch(() => null),
+                fetch(`/api/analytics/funnel?days=${days}`).then(r => r.json()).catch(() => null),
+                fetch(`/api/analytics/promo?days=${days}`).then(r => r.json()).catch(() => null),
+                fetch(`/api/analytics/abandons?days=${days}`).then(r => r.json()).catch(() => null)
+            ]);
+
+            // Overview stats
+            if (overview) {
+                document.getElementById('analyticsVisitors').textContent = overview.totalSessions;
+                document.getElementById('analyticsCompletions').textContent = overview.completedSessions;
+                document.getElementById('analyticsConversionRate').textContent = overview.conversionRate + '%';
+                document.getElementById('analyticsAvgTime').textContent = formatTime(overview.avgTimeOnForm);
+
+                // Sessions chart
+                renderSessionsChart(overview.sessionsByDay);
+
+                // Devices chart
+                renderDevicesChart(overview.devices);
+
+                // Hours chart
+                renderHoursChart(overview.sessionsByHour);
+            }
+
+            // Funnel
+            if (funnel) {
+                renderFunnel(funnel.funnel);
+                renderStepTimes(funnel.stepTimes);
+            }
+
+            // Promo stats
+            if (promo) {
+                document.getElementById('promoShown').textContent = promo.promoShown;
+                document.getElementById('promoAccepted').textContent = promo.promoAccepted;
+                document.getElementById('promoRefused').textContent = promo.promoRefused;
+                document.getElementById('promoAcceptanceRate').textContent = promo.acceptanceRate + '%';
+                document.getElementById('promoViewTime').textContent = formatTime(promo.avgPromoViewTime / 1000);
+            }
+
+            // Abandons
+            if (abandons) {
+                renderAbandons(abandons.abandonsByStep);
+            }
+        }
+
+        function formatTime(seconds) {
+            if (!seconds || seconds === 0) return '-';
+            if (seconds < 60) return Math.round(seconds) + 's';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.round(seconds % 60);
+            return `${mins}m ${secs}s`;
+        }
+
+        function renderSessionsChart(data) {
+            const ctx = document.getElementById('sessionsChart').getContext('2d');
+
+            if (sessionsChart) sessionsChart.destroy();
+
+            sessionsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => new Date(d.date).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' })),
+                    datasets: [{
+                        label: 'Total',
+                        data: data.map(d => d.total),
+                        borderColor: '#6b7280',
+                        backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Complétés',
+                        data: data.map(d => d.completed),
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function renderDevicesChart(data) {
+            const ctx = document.getElementById('devicesChart').getContext('2d');
+
+            if (devicesChart) devicesChart.destroy();
+
+            const colors = {
+                'desktop': '#3b82f6',
+                'mobile': '#22c55e',
+                'tablet': '#f59e0b'
+            };
+
+            devicesChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.map(d => d.device_type || 'Inconnu'),
+                    datasets: [{
+                        data: data.map(d => d.count),
+                        backgroundColor: data.map(d => colors[d.device_type] || '#6b7280')
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        function renderHoursChart(data) {
+            const ctx = document.getElementById('hoursChart').getContext('2d');
+
+            if (hoursChart) hoursChart.destroy();
+
+            // Fill in missing hours with 0
+            const hourData = Array(24).fill(0);
+            data.forEach(d => { hourData[d.hour] = d.count; });
+
+            hoursChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => i + 'h'),
+                    datasets: [{
+                        label: 'Sessions',
+                        data: hourData,
+                        backgroundColor: '#FF7A00'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function renderFunnel(data) {
+            const container = document.getElementById('funnelChart');
+            const stepNames = {
+                '1': 'Étape 1 - Entreprise',
+                '2': 'Étape 2 - Coordonnées',
+                '3': 'Étape 3 - Confirmation',
+                'success': 'Soumis avec succès'
+            };
+
+            const maxCount = Math.max(...data.map(d => d.count), 1);
+
+            container.innerHTML = data.map((d, i) => {
+                const percent = ((d.count / maxCount) * 100).toFixed(0);
+                const dropoff = i > 0 && data[i-1].count > 0
+                    ? Math.round(((data[i-1].count - d.count) / data[i-1].count) * 100)
+                    : 0;
+
+                return `
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-sm font-medium text-gray-700">${stepNames[d.step] || d.step}</span>
+                            <span class="text-sm font-bold text-gray-900">${d.count}</span>
+                        </div>
+                        <div class="h-8 bg-gray-100 rounded-lg overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-primary to-orange-400 transition-all duration-500"
+                                 style="width: ${percent}%"></div>
+                        </div>
+                        ${dropoff > 0 ? `<span class="absolute -right-2 top-0 text-xs text-red-500 font-medium">-${dropoff}%</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderStepTimes(data) {
+            const container = document.getElementById('stepTimesContainer');
+            const stepNames = {
+                '1': 'Étape 1',
+                '2': 'Étape 2',
+                '3': 'Étape 3',
+                'success': 'Succès'
+            };
+
+            container.innerHTML = data.map(d => `
+                <div class="text-center p-4 bg-gray-50 rounded-xl">
+                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">${stepNames[d.step] || d.step}</p>
+                    <p class="text-2xl font-bold text-gray-900">${formatTime(d.avg_time / 1000)}</p>
+                </div>
+            `).join('');
+        }
+
+        function renderAbandons(data) {
+            const container = document.getElementById('abandonsByStep');
+            const stepNames = {
+                '1': 'Étape 1 - Entreprise',
+                '2': 'Étape 2 - Coordonnées',
+                '3': 'Étape 3 - Confirmation'
+            };
+
+            const total = data.reduce((sum, d) => sum + d.count, 0) || 1;
+
+            container.innerHTML = data.length === 0
+                ? '<p class="text-gray-500 text-center py-8">Aucun abandon enregistré</p>'
+                : data.map(d => {
+                    const percent = ((d.count / total) * 100).toFixed(0);
+                    return `
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-sm font-medium text-gray-700">${stepNames[d.step] || d.step}</span>
+                                <span class="text-sm font-bold text-red-600">${d.count} (${percent}%)</span>
+                            </div>
+                            <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-red-500 transition-all duration-500"
+                                     style="width: ${percent}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+        }
+
+        // Realtime updates
+        function startRealtimeUpdates() {
+            loadRealtime();
+            realtimeInterval = setInterval(loadRealtime, 10000); // Every 10 seconds
+        }
+
+        function stopRealtimeUpdates() {
+            if (realtimeInterval) {
+                clearInterval(realtimeInterval);
+                realtimeInterval = null;
+            }
+        }
+
+        async function loadRealtime() {
+            try {
+                const res = await fetch('/api/analytics/realtime');
+                const data = await res.json();
+
+                document.getElementById('realtimeActive').textContent = data.activeCount;
+
+                const stepNames = { '1': 'Étape 1', '2': 'Étape 2', '3': 'Étape 3' };
+                const deviceIcons = { 'desktop': 'computer', 'mobile': 'smartphone', 'tablet': 'tablet' };
+
+                document.getElementById('realtimeSessions').innerHTML = data.activeSessions.length === 0
+                    ? '<p class="text-gray-400 text-sm text-center">Aucun visiteur actif</p>'
+                    : data.activeSessions.slice(0, 5).map(s => `
+                        <div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-gray-400 text-lg">${deviceIcons[s.device_type] || 'devices'}</span>
+                                <span class="text-sm text-gray-600">${stepNames[s.current_step] || 'Démarrage'}</span>
+                            </div>
+                            <span class="text-xs text-gray-400">${s.device_type}</span>
+                        </div>
+                    `).join('');
+            } catch (e) {
+                console.error('Realtime error:', e);
+            }
+        }
+
+        // =====================================================
+        // Demande Details Modal
+        // =====================================================
+
+        async function openDemande(id) {
+            currentDemandeId = id;
+            const res = await fetch(`/api/demandes/${id}`);
+            const d = await res.json();
+
+            const sectorLabels = {
+                'restaurant': 'Restaurant',
+                'epicerie': 'Épicerie',
+                'hotel': 'Hôtel',
+                'institution': 'Institution',
+                'autre': 'Autre'
+            };
+
+            document.getElementById('demandeDetails').innerHTML = `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase tracking-wider">Entreprise</label>
+                            <p class="font-bold text-gray-900">${d.company_name}</p>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase tracking-wider">Propriétaire</label>
+                            <p class="font-medium text-gray-900">${d.owner_name}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase tracking-wider">Personne contact</label>
+                            <p class="font-medium text-gray-900">${d.contact_name}</p>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase tracking-wider">Secteur</label>
+                            <p class="font-medium text-gray-900">${sectorLabels[d.sector] || d.sector}</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase tracking-wider">Adresse</label>
+                        <p class="font-medium text-gray-900">${d.address}, ${d.city}, ${d.postal_code}</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase tracking-wider">Volume annuel estimé</label>
+                            <p class="font-bold text-gray-900 text-lg">$${parseInt(d.annual_purchase.replace(/\s/g, '')).toLocaleString('fr-CA')}</p>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase tracking-wider">Programme promo 2%</label>
+                            ${d.promo_accepted === 'yes'
+                                ? `<p class="font-bold text-primary flex items-center gap-2">
+                                    <span class="material-symbols-outlined">check_circle</span>
+                                    Accepté (min. ${d.promo_min_order}/an)
+                                   </p>`
+                                : '<p class="text-gray-500">Non accepté</p>'}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase tracking-wider">Courriel responsable</label>
+                            <p class="font-medium text-gray-900"><a href="mailto:${d.email_responsable}" class="text-primary hover:underline">${d.email_responsable}</a></p>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase tracking-wider">Courriel facturation</label>
+                            <p class="font-medium text-gray-900"><a href="mailto:${d.email_facturation}" class="text-primary hover:underline">${d.email_facturation}</a></p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase tracking-wider">Téléphone</label>
+                            <p class="font-medium text-gray-900"><a href="tel:${d.phone}" class="text-primary hover:underline">${d.phone}</a></p>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase tracking-wider">Signature</label>
+                            <p class="font-medium text-gray-900 font-signature text-xl">${d.signature}</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-gray-200">
+                        <label class="text-xs text-gray-500 uppercase tracking-wider">Notes internes</label>
+                        <textarea
+                            id="notesInput"
+                            class="w-full mt-2 px-4 py-3 border border-gray-300 rounded-lg focus:border-primary outline-none resize-none"
+                            rows="3"
+                            placeholder="Ajouter des notes..."
+                        >${d.notes || ''}</textarea>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('statusSelect').value = d.status;
+            openModal(document.getElementById('demandeModal'));
+        }
+
+        // Save status
+        document.getElementById('saveStatusBtn').addEventListener('click', async () => {
+            const status = document.getElementById('statusSelect').value;
+            const notes = document.getElementById('notesInput').value;
+
+            await fetch(`/api/demandes/${currentDemandeId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status, notes })
+            });
+
+            closeModal(document.getElementById('demandeModal'));
+            loadDemandes();
+            loadStats();
+        });
+
+        // Delete demande
+        document.getElementById('deleteDemandeBtn').addEventListener('click', async () => {
+            if (confirm('Êtes-vous sûr de vouloir supprimer cette demande ?')) {
+                await fetch(`/api/demandes/${currentDemandeId}`, { method: 'DELETE' });
+                closeModal(document.getElementById('demandeModal'));
+                loadDemandes();
+                loadStats();
+            }
+        });
+
+        // =====================================================
+        // Admins
+        // =====================================================
+
+        async function loadAdmins() {
+            const res = await fetch('/api/admins');
+            const admins = await res.json();
+
+            document.getElementById('adminsTable').innerHTML = admins.map(a => `
+                <tr>
+                    <td class="px-6 py-4 font-medium text-gray-900">${a.nom}</td>
+                    <td class="px-6 py-4 text-gray-600">${a.username}</td>
+                    <td class="px-6 py-4 text-gray-600">${a.email || '-'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${new Date(a.created_at).toLocaleDateString('fr-CA')}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="deleteAdmin(${a.id})" class="text-red-600 hover:text-red-800">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('addAdminBtn').addEventListener('click', () => {
+            openModal(document.getElementById('addAdminModal'));
+        });
+
+        document.getElementById('addAdminForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+
+            const res = await fetch('/api/admins', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nom: formData.get('nom'),
+                    username: formData.get('username'),
+                    email: formData.get('email'),
+                    password: formData.get('password')
+                })
+            });
+
+            if (res.ok) {
+                closeModal(document.getElementById('addAdminModal'));
+                e.target.reset();
+                loadAdmins();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Erreur lors de la création');
+            }
+        });
+
+        async function deleteAdmin(id) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer cet administrateur ?')) {
+                const res = await fetch(`/api/admins/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadAdmins();
+                } else {
+                    const data = await res.json();
+                    alert(data.error);
+                }
+            }
+        }
+
+        // =====================================================
+        // Modal Helpers
+        // =====================================================
+
+        function openModal(modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = '';
+        }
+
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.addEventListener('click', () => {
+                closeModal(document.getElementById('demandeModal'));
+                closeModal(document.getElementById('addAdminModal'));
+            });
+        });
+
+        // Close on backdrop click
+        [document.getElementById('demandeModal'), document.getElementById('addAdminModal')].forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal(modal);
+            });
+        });
+
+        // Close on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal(document.getElementById('demandeModal'));
+                closeModal(document.getElementById('addAdminModal'));
+            }
+        });
+    </script>
+</body>
+</html>

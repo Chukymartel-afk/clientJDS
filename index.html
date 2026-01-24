@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html class="light" lang="fr">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Ouverture de compte | Les Jardins du Saguenay</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#FF7A00",
+                        "primary-dark": "#E66E00",
+                        "background-light": "#f4f4f2",
+                        "background-dark": "#121212",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "signature": ["Dancing Script", "cursive"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+    <style type="text/tailwindcss">
+        body {
+            font-family: "Inter", sans-serif;
+        }
+        html, body {
+            overflow-x: hidden;
+            height: 100%;
+        }
+        .vibrant-orange-bg {
+            background-color: #FF7A00;
+        }
+        .geometric-pattern {
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        input:focus, select:focus {
+            box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.15);
+            border-color: #FF7A00 !important;
+        }
+        .toggle-checkbox:checked {
+            background-color: #FF7A00;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #FF7A00;
+        }
+        .address-dropdown {
+            @apply absolute top-full left-0 right-0 bg-white border-2 border-gray-200 rounded-lg mt-1 max-h-60 overflow-y-auto z-50 shadow-xl;
+        }
+        .address-item {
+            @apply px-4 py-3 cursor-pointer hover:bg-orange-50 border-b border-gray-100 last:border-b-0 transition-colors;
+        }
+        .step-indicator {
+            @apply flex items-center gap-2;
+        }
+        .step-dot {
+            @apply size-3 rounded-full transition-all duration-300;
+        }
+        .step-dot.active {
+            @apply bg-white scale-125;
+        }
+        .step-dot.completed {
+            @apply bg-white/60;
+        }
+        .step-dot.pending {
+            @apply bg-white/30;
+        }
+        /* Gradient background for step 2 & 3 */
+        .gradient-bg {
+            background: linear-gradient(180deg, #FFF5ED 0%, #FFEEE0 50%, #FFE4D0 100%);
+        }
+        /* Progress bar styles */
+        .progress-line {
+            height: 4px;
+            background: #e5e7eb;
+        }
+        .progress-line-fill {
+            height: 4px;
+            background: linear-gradient(90deg, #22c55e 0%, #22c55e var(--progress), #e5e7eb var(--progress), #e5e7eb 100%);
+            transition: all 0.5s ease;
+        }
+
+        /* Promo card animations */
+        @keyframes gradient-rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .animate-gradient-rotate {
+            animation: gradient-rotate 3s linear infinite;
+            transform-origin: center;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+        }
+
+        @keyframes bounce-subtle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+        .animate-bounce-subtle {
+            animation: bounce-subtle 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce-slow {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-5px) rotate(10deg); }
+        }
+        .animate-bounce-slow {
+            animation: bounce-slow 3s ease-in-out infinite;
+        }
+
+        .delay-300 {
+            animation-delay: 0.3s;
+        }
+
+        .promo-card-animate {
+            animation: promo-appear 0.5s ease-out forwards;
+        }
+
+        @keyframes promo-appear {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Shimmer effect */
+        .promo-card-animate::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 3s infinite;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            50%, 100% { left: 100%; }
+        }
+    </style>
+</head>
+<body class="bg-[#f4f4f2] font-display">
+
+    <!-- ==================== STEP 1: Original Layout ==================== -->
+    <div id="step1Layout" class="flex h-screen flex-col lg:flex-row overflow-hidden">
+
+        <!-- Left Panel - Orange -->
+        <div class="relative hidden lg:flex lg:w-1/2 vibrant-orange-bg items-center justify-center p-10 overflow-hidden">
+            <div class="absolute inset-0 geometric-pattern"></div>
+
+            <div class="relative z-10 flex flex-col gap-8 max-w-lg">
+                <!-- Logo -->
+                <div class="flex items-center gap-4">
+                    <img src="assets/logo.png" alt="Les Jardins du Saguenay" class="h-20 drop-shadow-lg"/>
+                </div>
+
+                <!-- Title -->
+                <div class="flex flex-col gap-5">
+                    <h1 class="text-white text-5xl xl:text-6xl font-black leading-[1.1] tracking-tight">
+                        Devenez partenaire.
+                    </h1>
+                    <p class="text-white/90 text-lg xl:text-xl font-medium leading-relaxed max-w-md">
+                        Rejoignez notre réseau et accédez à nos produits frais de qualité supérieure.
+                    </p>
+                </div>
+
+                <!-- Progress Steps -->
+                <div class="flex flex-col gap-4">
+                    <p class="text-white/80 text-sm font-bold uppercase tracking-widest">Progression</p>
+                    <div class="flex items-center gap-5">
+                        <div class="step-indicator" data-step="1">
+                            <div class="step-dot active" id="stepDot1"></div>
+                            <span class="text-white font-semibold text-sm">Entreprise</span>
+                        </div>
+                        <div class="w-8 h-0.5 bg-white/30"></div>
+                        <div class="step-indicator" data-step="2">
+                            <div class="step-dot pending" id="stepDot2"></div>
+                            <span class="text-white/60 font-semibold text-sm">Activité</span>
+                        </div>
+                        <div class="w-8 h-0.5 bg-white/30"></div>
+                        <div class="step-indicator" data-step="3">
+                            <div class="step-dot pending" id="stepDot3"></div>
+                            <span class="text-white/60 font-semibold text-sm">Confirmation</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="flex items-center gap-8 pt-6 border-t border-white/20">
+                    <div class="flex flex-col">
+                        <span class="text-white text-4xl font-black">40+</span>
+                        <span class="text-white/70 text-sm font-medium">Années d'expérience</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-white text-4xl font-black">1000+</span>
+                        <span class="text-white/70 text-sm font-medium">Partenaires actifs</span>
+                    </div>
+
+                    <!-- Partner Logos -->
+                    <div class="flex items-center gap-3 ml-auto">
+                        <div class="flex -space-x-2">
+                            <div class="size-11 rounded-full border-2 border-white shadow-lg overflow-hidden">
+                                <img src="assets/images.png" alt="Partenaire" class="w-full h-full object-cover"/>
+                            </div>
+                            <div class="size-11 rounded-full border-2 border-white shadow-lg overflow-hidden">
+                                <img src="assets/images (1).png" alt="Partenaire" class="w-full h-full object-cover"/>
+                            </div>
+                            <div class="size-11 rounded-full border-2 border-white shadow-lg overflow-hidden">
+                                <img src="assets/poulet_rouge.png" alt="Poulet Rouge" class="w-full h-full object-cover"/>
+                            </div>
+                        </div>
+                        <p class="text-white/90 text-sm font-medium leading-tight max-w-[130px]">Ils nous font confiance</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="absolute -bottom-24 -right-24 size-96 bg-white/5 rounded-full blur-3xl"></div>
+            <div class="absolute -top-24 -left-24 size-64 bg-white/5 rounded-full blur-3xl"></div>
+        </div>
+
+        <!-- Right Panel - Form Step 1 -->
+        <div class="flex flex-1 flex-col bg-[#f4f4f2] items-center justify-center px-8 lg:px-16 h-full overflow-hidden">
+            <div class="w-full max-w-[520px] flex flex-col bg-white p-8 lg:p-10 rounded-2xl shadow-2xl shadow-black/5 border border-gray-200">
+
+                <!-- Mobile Header -->
+                <div class="lg:hidden flex items-center gap-3 mb-2">
+                    <img src="assets/logo.png" alt="Les Jardins du Saguenay" class="h-10"/>
+                </div>
+
+                <!-- Form Step 1 -->
+                <form id="accountForm" class="flex flex-col" novalidate>
+                    <div class="form-step" data-step="1">
+                        <div class="mb-5">
+                            <h2 class="text-[#1a1a1a] text-2xl font-black tracking-tight">Informations de l'entreprise</h2>
+                        </div>
+
+                        <div class="flex flex-col gap-4">
+                            <!-- Company Name -->
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[#333] text-xs font-bold uppercase tracking-wider">
+                                    Nom de l'entreprise
+                                </label>
+                                <input
+                                    type="text"
+                                    id="companyName"
+                                    name="companyName"
+                                    class="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:border-primary outline-none transition-all placeholder:text-gray-400 text-base font-medium"
+                                    placeholder=""
+                                    required
+                                />
+                            </div>
+
+                            <!-- Owner Name -->
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[#333] text-xs font-bold uppercase tracking-wider">
+                                    Nom du propriétaire
+                                </label>
+                                <input
+                                    type="text"
+                                    id="ownerName"
+                                    name="ownerName"
+                                    class="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:border-primary outline-none transition-all placeholder:text-gray-400 text-base font-medium"
+                                    placeholder="Prénom et nom complet"
+                                    required
+                                />
+                            </div>
+
+                            <!-- Is Owner Toggle -->
+                            <div class="flex items-center gap-3 py-2.5 px-4 bg-gray-50 rounded-lg">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="isOwnerContact" class="sr-only peer" checked>
+                                    <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                </label>
+                                <span class="text-sm font-medium text-gray-700">C'est le propriétaire qui effectue l'ouverture</span>
+                            </div>
+
+                            <!-- Contact Name (hidden by default) -->
+                            <div class="flex flex-col gap-1.5 hidden" id="contactField">
+                                <label class="text-[#333] text-xs font-bold uppercase tracking-wider">
+                                    Nom de la personne responsable
+                                </label>
+                                <input
+                                    type="text"
+                                    id="contactName"
+                                    name="contactName"
+                                    class="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:border-primary outline-none transition-all placeholder:text-gray-400 text-base font-medium"
+                                    placeholder="Prénom et nom"
+                                />
+                            </div>
+
+                            <!-- Address -->
+                            <div class="flex flex-col gap-1.5 relative">
+                                <label class="text-[#333] text-xs font-bold uppercase tracking-wider">
+                                    Adresse de l'entreprise
+                                </label>
+                                <input
+                                    type="text"
+                                    id="address"
+                                    name="address"
+                                    class="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:border-primary outline-none transition-all placeholder:text-gray-400 text-base font-medium"
+                                    placeholder="Commencez à écrire votre adresse..."
+                                    required
+                                    autocomplete="off"
+                                />
+                                <div class="address-dropdown hidden" id="addressDropdown"></div>
+                            </div>
+
+                            <!-- City & Postal Code -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="flex flex-col gap-1.5">
+                                    <label class="text-[#333] text-xs font-bold uppercase tracking-wider">Ville</label>
+                                    <input
+                                        type="text"
+                                        id="city"
+                                        name="city"
+                                        class="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:border-primary outline-none transition-all placeholder:text-gray-400 text-base font-medium"
+                                        placeholder="Ville"
+                                        required
+                                    />
+                                </div>
+                                <div class="flex flex-col gap-1.5">
+                                    <label class="text-[#333] text-xs font-bold uppercase tracking-wider">Code postal</label>
+                                    <input
+                                        type="text"
+                                        id="postalCode"
+                                        name="postalCode"
+                                        class="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:border-primary outline-none transition-all placeholder:text-gray-400 text-base font-medium"
+                                        placeholder="G7H 1A1"
+                                        required
+                                        maxlength="7"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Next Button -->
+                        <button
+                            type="button"
+                            class="w-full mt-6 bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-xl shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2 group uppercase tracking-wider text-sm"
+                            data-next="2"
+                        >
+                            <span>Continuer</span>
+                            <span class="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Footer Link -->
+                <div class="pt-5 mt-5 border-t border-gray-200">
+                    <p class="text-center text-gray-500 text-sm font-medium">
+                        Déjà un compte ?
+                        <a class="text-primary font-bold hover:underline ml-1" href="https://lesjardinsdusaguenay.com/client/login">Se connecter</a>
+                    </p>
+                </div>
+            </div>
+
+            <p class="mt-4 text-gray-400 text-xs font-medium">© 2026 Les Jardins du Saguenay</p>
+        </div>
+    </div>
+
+    <!-- ==================== STEP 2 & 3: New Layout ==================== -->
+    <div id="step23Layout" class="hidden min-h-screen gradient-bg">
+
+        <!-- Header -->
+        <header class="flex items-center justify-between px-6 lg:px-12 py-6">
+            <img src="assets/logo.png" alt="Les Jardins du Saguenay" class="h-14 lg:h-16"/>
+            <a href="tel:4185421797" class="flex items-center gap-3 bg-white rounded-full pl-4 pr-5 py-3 shadow-lg hover:shadow-xl transition-all">
+                <div class="size-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-primary">call</span>
+                </div>
+                <span class="font-bold text-gray-800">418 542-1797</span>
+            </a>
+        </header>
+
+        <!-- Progress Bar -->
+        <div class="px-6 lg:px-12 mb-8">
+            <div class="max-w-3xl mx-auto">
+                <!-- Progress Line -->
+                <div class="relative mb-8">
+                    <div class="progress-line absolute top-6 left-0 right-0 mx-16"></div>
+                    <div class="progress-line-fill absolute top-6 left-0 right-0 mx-16" id="progressFill" style="--progress: 50%;"></div>
+
+                    <!-- Steps -->
+                    <div class="relative flex justify-between">
+                        <!-- Step 1 -->
+                        <div class="flex flex-col items-center">
+                            <div class="size-12 rounded-full bg-green-500 flex items-center justify-center shadow-lg z-10" id="progressCircle1">
+                                <span class="material-symbols-outlined text-white text-2xl">check</span>
+                            </div>
+                            <span class="mt-3 text-sm font-semibold text-green-600" id="progressLabel1">Entreprise</span>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="flex flex-col items-center">
+                            <div class="size-12 rounded-full bg-green-500 flex items-center justify-center shadow-lg z-10" id="progressCircle2">
+                                <span class="material-symbols-outlined text-white text-2xl" id="progressIcon2">check</span>
+                            </div>
+                            <span class="mt-3 text-sm font-semibold text-green-600" id="progressLabel2">Activité</span>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="flex flex-col items-center">
+                            <div class="size-12 rounded-full bg-primary flex items-center justify-center shadow-lg z-10" id="progressCircle3">
+                                <span class="text-white text-xl font-bold" id="progressIcon3">3</span>
+                            </div>
+                            <span class="mt-3 text-sm font-semibold text-primary" id="progressLabel3">Confirmation</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Card -->
+        <div class="px-6 lg:px-12 pb-12">
+            <div class="max-w-3xl mx-auto">
+                <div class="bg-white rounded-3xl shadow-2xl shadow-black/10 p-8 lg:p-12">
+
+                    <!-- Form for Steps 2 & 3 -->
+                    <form id="accountForm2" novalidate>
+
+                        <!-- STEP 2: Sector & Contact -->
+                        <div class="form-step-alt" data-step="2">
+                            <!-- Badge -->
+                            <div class="flex justify-center mb-6">
+                                <span class="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-semibold">
+                                    <span class="material-symbols-outlined text-lg">category</span>
+                                    Étape 2 sur 3
+                                </span>
+                            </div>
+
+                            <h2 class="text-3xl lg:text-4xl font-black text-center text-gray-900 mb-2">Votre activité</h2>
+                            <p class="text-gray-500 text-center mb-10">Parlez-nous de votre entreprise</p>
+
+                            <div class="flex flex-col gap-6">
+                                <!-- Sector Selection -->
+                                <div class="flex flex-col gap-3">
+                                    <label class="text-gray-700 text-sm font-bold">Secteur d'activité</label>
+                                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" id="sectorGrid2">
+                                        <button type="button" class="sector-card flex flex-col items-center gap-2 p-5 border-2 border-gray-200 rounded-2xl hover:border-primary hover:bg-orange-50 transition-all" data-sector="restaurant">
+                                            <span class="material-symbols-outlined text-4xl text-gray-400">restaurant</span>
+                                            <span class="text-sm font-bold text-gray-700">Restaurant</span>
+                                        </button>
+                                        <button type="button" class="sector-card flex flex-col items-center gap-2 p-5 border-2 border-gray-200 rounded-2xl hover:border-primary hover:bg-orange-50 transition-all" data-sector="hotellerie">
+                                            <span class="material-symbols-outlined text-4xl text-gray-400">hotel</span>
+                                            <span class="text-sm font-bold text-gray-700">Hôtellerie</span>
+                                        </button>
+                                        <button type="button" class="sector-card flex flex-col items-center gap-2 p-5 border-2 border-gray-200 rounded-2xl hover:border-primary hover:bg-orange-50 transition-all" data-sector="residence">
+                                            <span class="material-symbols-outlined text-4xl text-gray-400">elderly</span>
+                                            <span class="text-sm font-bold text-gray-700">Résidence aînés</span>
+                                        </button>
+                                        <button type="button" class="sector-card flex flex-col items-center gap-2 p-5 border-2 border-gray-200 rounded-2xl hover:border-primary hover:bg-orange-50 transition-all" data-sector="epicerie">
+                                            <span class="material-symbols-outlined text-4xl text-gray-400">shopping_cart</span>
+                                            <span class="text-sm font-bold text-gray-700">Épicerie</span>
+                                        </button>
+                                        <button type="button" class="sector-card flex flex-col items-center gap-2 p-5 border-2 border-gray-200 rounded-2xl hover:border-primary hover:bg-orange-50 transition-all" data-sector="depanneur">
+                                            <span class="material-symbols-outlined text-4xl text-gray-400">storefront</span>
+                                            <span class="text-sm font-bold text-gray-700">Dépanneur</span>
+                                        </button>
+                                        <button type="button" class="sector-card flex flex-col items-center gap-2 p-5 border-2 border-gray-200 rounded-2xl hover:border-primary hover:bg-orange-50 transition-all" data-sector="autre">
+                                            <span class="material-symbols-outlined text-4xl text-gray-400">add_circle</span>
+                                            <span class="text-sm font-bold text-gray-700">Autre</span>
+                                        </button>
+                                    </div>
+                                    <input type="hidden" id="selectedSector" name="sector" required>
+                                </div>
+
+                                <!-- Annual Purchase -->
+                                <div class="flex flex-col gap-2">
+                                    <label class="text-gray-700 text-sm font-bold">Montant d'achat estimé par année</label>
+                                    <div class="relative">
+                                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-lg">$</span>
+                                        <input
+                                            type="text"
+                                            id="annualPurchase"
+                                            name="annualPurchase"
+                                            class="w-full pl-10 pr-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-primary focus:bg-white outline-none transition-all placeholder:text-gray-400 text-lg font-bold"
+                                            placeholder="50 000"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- Promo Card -->
+                                <div class="hidden promo-card-animate relative overflow-hidden rounded-3xl p-1" id="promoCard">
+                                    <!-- Animated gradient border -->
+                                    <div class="absolute inset-0 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 animate-gradient-rotate"></div>
+
+                                    <!-- Inner content -->
+                                    <div class="relative bg-gradient-to-br from-orange-500 via-primary to-orange-600 rounded-[22px] p-6 text-white">
+                                        <!-- Sparkles -->
+                                        <div class="absolute top-3 right-3 animate-pulse">
+                                            <span class="material-symbols-outlined text-yellow-300 text-2xl">auto_awesome</span>
+                                        </div>
+                                        <div class="absolute top-8 right-12 animate-pulse delay-300">
+                                            <span class="material-symbols-outlined text-yellow-200/60 text-lg">star</span>
+                                        </div>
+                                        <div class="absolute bottom-4 right-8 animate-bounce-slow">
+                                            <span class="material-symbols-outlined text-yellow-300/40 text-xl">celebration</span>
+                                        </div>
+
+                                        <!-- Badge -->
+                                        <div class="inline-flex items-center gap-1.5 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-4 shadow-lg animate-bounce-subtle">
+                                            <span class="material-symbols-outlined text-sm">local_fire_department</span>
+                                            Offre exclusive
+                                        </div>
+
+                                        <!-- Main content -->
+                                        <div class="flex items-center gap-5">
+                                            <div class="size-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xl border border-white/30">
+                                                <div class="text-center">
+                                                    <span class="text-4xl font-black text-white drop-shadow-lg">2%</span>
+                                                </div>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-xl font-bold mb-2 leading-tight">
+                                                    Ristourne sur <span class="text-yellow-300">tous vos achats</span> pendant 1 an!
+                                                </p>
+                                                <p class="text-white/90 text-sm leading-relaxed">
+                                                    Avec un minimum d'achat de <strong class="text-yellow-300 text-lg font-black" id="promoMinOrder">$0</strong> par année
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <!-- Bottom actions -->
+                                        <div class="mt-5 pt-4 border-t border-white/20 flex items-center justify-between gap-4">
+                                            <div class="flex items-center gap-2 text-white/80 text-sm">
+                                                <span class="material-symbols-outlined text-lg">savings</span>
+                                                <span>Économisez sur chaque commande</span>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <button type="button" id="refusePromo" class="promo-btn-refuse px-4 py-2 rounded-lg text-sm font-bold bg-white/20 text-white hover:bg-white/30 transition-all">
+                                                    Non merci
+                                                </button>
+                                                <button type="button" id="acceptPromo" class="promo-btn-accept px-4 py-2 rounded-lg text-sm font-bold bg-yellow-400 text-yellow-900 hover:bg-yellow-300 transition-all shadow-lg flex items-center gap-1.5">
+                                                    <span class="material-symbols-outlined text-lg">check_circle</span>
+                                                    J'accepte
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <!-- Hidden input for form -->
+                                        <input type="hidden" id="promoAccepted" name="promoAccepted" value="">
+                                    </div>
+                                </div>
+
+                                <!-- Email Responsable -->
+                                <div class="flex flex-col gap-2">
+                                    <label class="text-gray-700 text-sm font-bold">Courriel du responsable</label>
+                                    <input
+                                        type="email"
+                                        id="emailResponsable"
+                                        name="emailResponsable"
+                                        class="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-primary focus:bg-white outline-none transition-all placeholder:text-gray-400 font-medium"
+                                        placeholder="responsable@exemple.com"
+                                        required
+                                    />
+                                </div>
+
+                                <!-- Email Facturation -->
+                                <div class="flex flex-col gap-2">
+                                    <label class="text-gray-700 text-sm font-bold">Courriel de facturation</label>
+                                    <input
+                                        type="email"
+                                        id="emailFacturation"
+                                        name="emailFacturation"
+                                        class="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-primary focus:bg-white outline-none transition-all placeholder:text-gray-400 font-medium"
+                                        placeholder="facturation@exemple.com"
+                                        required
+                                    />
+                                </div>
+
+                                <!-- Phone -->
+                                <div class="flex flex-col gap-2">
+                                    <label class="text-gray-700 text-sm font-bold">Téléphone de l'entreprise</label>
+                                    <input
+                                        type="tel"
+                                        id="phone"
+                                        name="phone"
+                                        class="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-primary focus:bg-white outline-none transition-all placeholder:text-gray-400 font-medium"
+                                        placeholder="(418) 555-0123"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <!-- Navigation Buttons -->
+                            <div class="flex gap-4 mt-10">
+                                <button
+                                    type="button"
+                                    class="flex-1 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
+                                    data-prev="1"
+                                >
+                                    <span class="material-symbols-outlined text-xl">arrow_back</span>
+                                    <span>Retour</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="flex-[2] bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-xl shadow-xl shadow-primary/30 transition-all flex items-center justify-center gap-3 group uppercase tracking-wider"
+                                    data-next="3"
+                                >
+                                    <span>Continuer</span>
+                                    <span class="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 3: Confirmation -->
+                        <div class="form-step-alt hidden" data-step="3">
+                            <!-- Badge -->
+                            <div class="flex justify-center mb-6">
+                                <span class="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-semibold">
+                                    <span class="material-symbols-outlined text-lg">check_circle</span>
+                                    Dernière étape
+                                </span>
+                            </div>
+
+                            <h2 class="text-3xl lg:text-4xl font-black text-center text-gray-900 mb-2">Vérification finale</h2>
+                            <p class="text-gray-500 text-center mb-10">Assurez-vous que toutes les informations sont correctes</p>
+
+                            <!-- Summary Cards -->
+                            <div class="flex flex-col gap-4 mb-8">
+                                <!-- Company Summary -->
+                                <div class="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                                    <div class="flex items-center justify-between mb-5">
+                                        <div class="flex items-center gap-3">
+                                            <div class="size-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                                <span class="material-symbols-outlined text-primary">business</span>
+                                            </div>
+                                            <h3 class="font-bold text-gray-800 text-lg">Entreprise</h3>
+                                        </div>
+                                        <button type="button" class="size-10 bg-white rounded-lg border border-gray-200 flex items-center justify-center hover:border-primary transition-colors" data-edit="1">
+                                            <span class="material-symbols-outlined text-gray-500 text-xl">edit</span>
+                                        </button>
+                                    </div>
+                                    <div class="grid gap-3">
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-gray-500">Nom</span>
+                                            <span class="font-semibold text-gray-800" id="sumCompany">-</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-gray-500">Propriétaire</span>
+                                            <span class="font-semibold text-gray-800" id="sumOwner">-</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-gray-500">Contact</span>
+                                            <span class="font-semibold text-gray-800" id="sumContact">-</span>
+                                        </div>
+                                        <div class="flex justify-between py-2">
+                                            <span class="text-gray-500">Adresse</span>
+                                            <span class="font-semibold text-gray-800 text-right max-w-[60%]" id="sumAddress">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Activity Summary -->
+                                <div class="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                                    <div class="flex items-center justify-between mb-5">
+                                        <div class="flex items-center gap-3">
+                                            <div class="size-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                                <span class="material-symbols-outlined text-primary">category</span>
+                                            </div>
+                                            <h3 class="font-bold text-gray-800 text-lg">Activité</h3>
+                                        </div>
+                                        <button type="button" class="size-10 bg-white rounded-lg border border-gray-200 flex items-center justify-center hover:border-primary transition-colors" data-edit="2">
+                                            <span class="material-symbols-outlined text-gray-500 text-xl">edit</span>
+                                        </button>
+                                    </div>
+                                    <div class="grid gap-3">
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-gray-500">Secteur</span>
+                                            <span class="font-semibold text-gray-800" id="sumSector">-</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-gray-500">Achats annuels</span>
+                                            <span class="font-semibold text-gray-800" id="sumAnnual">-</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-gray-500">Courriel responsable</span>
+                                            <span class="font-semibold text-gray-800" id="sumEmailResp">-</span>
+                                        </div>
+                                        <div class="flex justify-between py-2 border-b border-gray-200">
+                                            <span class="text-gray-500">Courriel facturation</span>
+                                            <span class="font-semibold text-gray-800" id="sumEmailFact">-</span>
+                                        </div>
+                                        <div class="flex justify-between py-2">
+                                            <span class="text-gray-500">Téléphone</span>
+                                            <span class="font-semibold text-gray-800" id="sumPhone">-</span>
+                                        </div>
+                                    </div>
+                                    <!-- Promo Row -->
+                                    <div class="flex justify-between items-center bg-orange-50 -mx-6 px-6 py-4 mt-4 rounded-b-2xl border-t border-orange-100" id="sumPromoRow">
+                                        <span class="text-primary font-semibold flex items-center gap-2">
+                                            <span class="material-symbols-outlined">star</span>
+                                            Avantage
+                                        </span>
+                                        <span class="font-bold text-primary" id="sumPromo">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Terms Checkbox -->
+                            <div class="flex items-start gap-4 py-5 px-5 bg-gray-50 rounded-2xl border border-gray-200 mb-6">
+                                <input
+                                    type="checkbox"
+                                    id="acceptTerms"
+                                    class="size-6 rounded-lg border-2 border-gray-400 text-primary focus:ring-primary/20 cursor-pointer mt-0.5"
+                                    required
+                                />
+                                <label class="text-gray-600 leading-relaxed cursor-pointer" for="acceptTerms">
+                                    J'accepte les <a class="text-primary font-bold hover:underline cursor-pointer" id="openTerms">conditions générales</a> et la <a class="text-primary font-bold hover:underline cursor-pointer" id="openPrivacy">politique de confidentialité</a>.
+                                </label>
+                            </div>
+
+                            <!-- Signature électronique -->
+                            <div class="mb-8">
+                                <label class="text-gray-700 text-sm font-bold mb-3 block">
+                                    <span class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-lg">draw</span>
+                                        Signature électronique
+                                    </span>
+                                </label>
+                                <div class="relative">
+                                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                        <span class="material-symbols-outlined">signature</span>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        id="signature"
+                                        name="signature"
+                                        class="w-full pl-12 pr-4 py-4 bg-white border-2 border-gray-200 rounded-xl focus:border-primary outline-none transition-all placeholder:text-gray-400 font-signature text-xl"
+                                        placeholder="Entrez votre nom complet"
+                                        required
+                                    />
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-sm">info</span>
+                                    En signant, vous confirmez être autorisé(e) à engager l'entreprise
+                                </p>
+                            </div>
+
+                            <!-- Navigation Buttons -->
+                            <div class="flex gap-4">
+                                <button
+                                    type="button"
+                                    class="flex-1 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
+                                    data-prev="2"
+                                >
+                                    <span class="material-symbols-outlined text-xl">arrow_back</span>
+                                    <span>Retour</span>
+                                </button>
+                                <button
+                                    type="submit"
+                                    class="flex-[2] bg-green-600 hover:bg-green-700 text-white font-black py-4 rounded-xl shadow-xl shadow-green-600/30 transition-all flex items-center justify-center gap-3 group uppercase tracking-wider"
+                                >
+                                    <span>Soumettre ma demande</span>
+                                    <span class="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">check_circle</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- SUCCESS STATE -->
+                        <div class="form-step-alt hidden" data-step="success">
+                            <div class="text-center py-8">
+                                <div class="size-28 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8">
+                                    <span class="material-symbols-outlined text-6xl text-green-600">check_circle</span>
+                                </div>
+                                <h2 class="text-4xl font-black text-gray-900 mb-4">Demande envoyée!</h2>
+                                <p class="text-gray-600 text-lg mb-10 max-w-md mx-auto">
+                                    Merci pour votre confiance. Notre équipe examinera votre demande et vous contactera très bientôt.
+                                </p>
+                                <a
+                                    href="https://lesjardinsdusaguenay.com"
+                                    class="inline-flex items-center gap-3 bg-primary hover:bg-primary-dark text-white font-bold py-4 px-10 rounded-xl transition-all text-lg"
+                                >
+                                    <span>Retourner à l'accueil</span>
+                                    <span class="material-symbols-outlined">home</span>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Politique de confidentialité -->
+    <div id="modalPrivacy" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 class="text-2xl font-black text-gray-900">Politique de confidentialité</h3>
+                <button type="button" class="close-modal size-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto text-gray-700 leading-relaxed space-y-4">
+                <p class="font-bold text-lg text-gray-900">Les Jardins du Saguenay s'engage à protéger la confidentialité des renseignements personnels de ses clients.</p>
+
+                <h4 class="font-bold text-gray-900 mt-6">Renseignements collectés</h4>
+                <ul class="list-disc pl-6 space-y-1">
+                    <li>Informations d'identification (nom de l'entreprise, adresse, téléphone, courriel)</li>
+                    <li>Informations commerciales (NEQ, volume d'achat annuel)</li>
+                    <li>Informations du responsable (nom, courriel)</li>
+                    <li>Historique d'achats</li>
+                </ul>
+
+                <h4 class="font-bold text-gray-900 mt-6">Utilisation des données</h4>
+                <ul class="list-disc pl-6 space-y-1">
+                    <li>Gestion de votre compte client</li>
+                    <li>Traitement et livraison des commandes</li>
+                    <li>Facturation et comptabilité</li>
+                    <li>Communications relatives à vos commandes et à nos services</li>
+                </ul>
+
+                <h4 class="font-bold text-gray-900 mt-6">Conservation des données</h4>
+                <p>Vos données sont conservées pendant toute la durée de votre relation commerciale avec nous et conformément aux exigences légales applicables.</p>
+
+                <h4 class="font-bold text-gray-900 mt-6">Partage des données</h4>
+                <p>Vos données ne sont jamais vendues à des tiers.</p>
+
+                <h4 class="font-bold text-gray-900 mt-6">Sécurité</h4>
+                <p>Nous mettons en œuvre des mesures de sécurité appropriées pour protéger vos renseignements personnels contre tout accès non autorisé.</p>
+
+                <h4 class="font-bold text-gray-900 mt-6">Vos droits</h4>
+                <p>Vous avez le droit d'accéder à vos données personnelles, de les rectifier ou de demander leur suppression en nous contactant.</p>
+
+                <h4 class="font-bold text-gray-900 mt-6">Contact</h4>
+                <p>Pour toute question concernant cette politique de confidentialité :<br>
+                <a href="mailto:Ventes@lesjardinsdusaguenay.com" class="text-primary font-bold hover:underline">Ventes@lesjardinsdusaguenay.com</a></p>
+            </div>
+            <div class="p-4 border-t border-gray-200 bg-gray-50">
+                <button type="button" class="close-modal w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors">
+                    Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Conditions générales -->
+    <div id="modalTerms" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 class="text-2xl font-black text-gray-900">Conditions générales</h3>
+                <button type="button" class="close-modal size-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto text-gray-700 leading-relaxed space-y-4">
+
+                <!-- VERSION 1: Sans achat minimum -->
+                <div id="termsNoPromo">
+                    <p class="font-bold text-lg text-gray-900 mb-4">CONDITIONS GÉNÉRALES D'APPROVISIONNEMENT<br>LES JARDINS DU SAGUENAY</p>
+                    <p class="text-sm text-gray-600 mb-6">En créant un compte, vous acceptez les conditions suivantes :</p>
+
+                    <h4 class="font-bold text-gray-900 mt-6">1. COMMANDES</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Vous commandez les Produits par bon de commande électronique sur notre plateforme</li>
+                        <li>Nous confirmons votre commande par courriel dans les 1 heures ouvrables. Si vous ne recevez pas de confirmation, votre commande est automatiquement acceptée</li>
+                        <li>Tous les prix sont selon notre liste de prix en vigueur (taxes en sus)</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">2. MODIFICATION ET ANNULATION</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Vous pouvez modifier votre commande jusqu'à 24 heures ouvrables avant la livraison</li>
+                        <li>Vous pouvez annuler votre commande jusqu'à 24 heures avant la livraison</li>
+                        <li>Si vous annulez avec moins de 24 heures de préavis ou refusez de prendre livraison, vous devrez payer des frais de désengagement de 50$</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">3. LIVRAISON</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Nous livrons les Produits à l'adresse indiquée sur votre commande</li>
+                        <li>Chaque livraison est accompagnée d'un bon de livraison</li>
+                        <li>Les frais de livraison sont facturés en sus selon notre grille tarifaire</li>
+                        <li>Nous sommes responsables des Produits jusqu'à la livraison. Vous devenez propriétaire et responsable des Produits dès leur livraison à votre adresse après la réception</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">4. QUALITÉ</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Les Produits sont emballés selon les règles de l'art</li>
+                        <li>Le prix inclut l'emballage standard. Les emballages spéciaux peuvent entraîner des frais supplémentaires</li>
+                        <li>Nous garantissons que les Produits sont aptes à la consommation à la date de livraison</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">5. PAIEMENT</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Le paiement est dû dans les 7 jours suivant la réception de la facture</li>
+                        <li>En cas de retard de paiement, des intérêts au taux préférentiel bancaire plus 15% par année s'appliquent</li>
+                        <li>Si votre solde est impayé depuis plus de 30 jours, le paiement à la livraison sera exigé pour toute commande future. Nous pourrons aussi suspendre les livraisons sans préavis, même si vous avez des commandes acceptées</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">6. CONFIDENTIALITÉ</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Toutes les informations relatives à nos prix, nos opérations et ce contrat sont confidentielles</li>
+                        <li>Vous vous engagez à protéger cette confidentialité pendant et après la fin du contrat</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">7. RÉSILIATION</h4>
+                    <p class="text-sm mb-2">Nous pouvons résilier immédiatement votre compte sans avis si :</p>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Vous ne payez pas les sommes dues selon les délais prévus</li>
+                        <li>Vous commettez un manquement aux conditions et ne le corrigez pas dans les 10 jours suivant notre avis écrit</li>
+                        <li>Vous devenez insolvable ou incapable de payer vos dettes</li>
+                        <li>Vous commettez un acte criminel à notre égard ou celui de nos employés</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">8. RESPONSABILITÉ</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Vous nous indemnisez de toute perte subie en raison d'une fausse déclaration de votre part ou de l'inexécution de vos obligations</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">9. CESSION</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Vous ne pouvez pas transférer vos droits dans ce contrat sans notre consentement écrit préalable</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">10. FORCE MAJEURE</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Nous ne sommes pas responsables en cas d'inexécution due à un cas de force majeure (catastrophes naturelles, incendies, inondations, guerres, actes de terrorisme, grèves, lock-out, épidémies, interruptions de services publics)</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">11. JURIDICTION</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Ce contrat est régi par les lois du Québec</li>
+                        <li>Les tribunaux du district de Chicoutimi ont compétence exclusive pour tout litige</li>
+                    </ul>
+
+                    <div class="mt-8 p-4 bg-gray-100 rounded-xl text-sm">
+                        <p class="font-bold text-gray-900 mb-2">EN CRÉANT MON COMPTE, JE CONFIRME AVOIR LU ET ACCEPTÉ L'INTÉGRALITÉ DE CES CONDITIONS GÉNÉRALES</p>
+                    </div>
+
+                    <p class="text-xs text-gray-500 mt-6 text-center">
+                        9051-2500 QUÉBEC INC. faisant affaires sous le nom Les Jardins du Saguenay<br>
+                        2380, rue Cantin, Saguenay, Québec, G7X 8S6
+                    </p>
+                </div>
+
+                <!-- VERSION 2: Avec achat minimum (promo acceptée) -->
+                <div id="termsWithPromo" class="hidden">
+                    <div class="mb-4 p-3 bg-orange-100 border border-orange-300 rounded-xl flex items-center gap-3">
+                        <span class="material-symbols-outlined text-primary text-2xl">verified</span>
+                        <div>
+                            <p class="font-bold text-primary">Programme Achat Minimum</p>
+                            <p class="text-sm text-orange-700">Vous bénéficiez d'une ristourne de 2% sur tous vos achats</p>
+                        </div>
+                    </div>
+
+                    <p class="font-bold text-lg text-gray-900 mb-4">CONDITIONS GÉNÉRALES D'APPROVISIONNEMENT<br>LES JARDINS DU SAGUENAY - PROGRAMME ACHAT MINIMUM</p>
+
+                    <h4 class="font-bold text-gray-900 mt-6">ENGAGEMENT D'ACHAT MINIMUM</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Vous vous engagez à acheter un volume minimal annuel de <strong class="text-primary" id="termsMinAmount">$0</strong> de Produits en échange d'une ristourne de 2%</li>
+                        <li>Cet engagement est pour une période de 12 mois à compter de la date de création de votre compte</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">PÉNALITÉ SI VOLUME NON ATTEINT</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Si vous n'atteignez pas le volume minimal annuel prévu, vous devrez payer une pénalité de 15% du volume minimal non atteint</li>
+                        <li>Cette pénalité sera calculée à la fin de la période de 12 mois et sera payable dans un délai de 30 jours suivant notre avis écrit</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">COMMANDES</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Vous commandez les Produits par bon de commande électronique sur notre plateforme</li>
+                        <li>Nous confirmons votre commande par courriel dans les 1 heures ouvrables. Si vous ne recevez pas de confirmation, votre commande est automatiquement acceptée</li>
+                        <li>Tous les prix sont selon notre liste de prix en vigueur (taxes en sus)</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">MODIFICATION ET ANNULATION</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Vous pouvez modifier votre commande jusqu'à 24 heures ouvrables avant la livraison</li>
+                        <li>Vous pouvez annuler votre commande jusqu'à 24 heures avant la livraison</li>
+                        <li>Si vous annulez avec moins de 24 heures de préavis ou refusez de prendre livraison, vous devrez payer des frais de désengagement de 10% du montant de la commande</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">LIVRAISON</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Nous livrons les Produits à l'adresse indiquée sur votre commande</li>
+                        <li>Chaque livraison est accompagnée d'un bon de livraison</li>
+                        <li>Les frais de livraison sont facturés en sus selon notre entente ensemble</li>
+                        <li>Nous sommes responsables des Produits jusqu'à la livraison. Vous devenez propriétaire et responsable des Produits dès leur livraison à votre adresse</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">QUALITÉ</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Les Produits sont emballés selon les règles de l'art</li>
+                        <li>Le prix inclut l'emballage standard. Les emballages spéciaux peuvent entraîner des frais supplémentaires</li>
+                        <li>Nous garantissons que les Produits sont aptes à la consommation à la date de livraison</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">PAIEMENT</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Le paiement est dû dans les 15 jours suivant la réception de la facture</li>
+                        <li>En cas de retard de paiement, des intérêts au taux préférentiel bancaire plus 15% par année s'appliquent</li>
+                        <li>Si votre solde est impayé depuis plus de 30 jours, le paiement à la livraison sera exigé pour toute commande future. Nous pourrons aussi suspendre les livraisons sans préavis, même si vous avez des commandes acceptées</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">CONFIDENTIALITÉ</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Toutes les informations relatives à nos prix, nos opérations et ce contrat sont confidentielles</li>
+                        <li>Vous vous engagez à protéger cette confidentialité pendant et après la fin du contrat</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">RÉSILIATION</h4>
+                    <p class="text-sm mb-2">Nous pouvons résilier immédiatement votre compte sans avis si :</p>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Vous ne payez pas les sommes dues selon les délais prévus</li>
+                        <li>Vous commettez un manquement aux conditions et ne le corrigez pas dans les 10 jours suivant notre avis écrit</li>
+                        <li>Vous devenez insolvable ou incapable de payer vos dettes</li>
+                        <li>Vous commettez un acte criminel à notre égard ou celui de nos employés</li>
+                    </ul>
+                    <p class="text-sm mt-2">Si le contrat est résilié, toutes les sommes dues deviennent immédiatement exigibles</p>
+
+                    <h4 class="font-bold text-gray-900 mt-6">RESPONSABILITÉ</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Vous nous indemnisez de toute perte subie en raison d'une fausse déclaration de votre part ou de l'inexécution de vos obligations</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">CESSION</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Vous ne pouvez pas transférer vos droits dans ce contrat sans notre consentement écrit préalable</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">FORCE MAJEURE</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Nous ne sommes pas responsables en cas d'inexécution due à un cas de force majeure (catastrophes naturelles, incendies, inondations, guerres, actes de terrorisme, grèves, lock-out, épidémies, interruptions de services publics)</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900 mt-6">JURIDICTION</h4>
+                    <ul class="list-disc pl-6 space-y-1 text-sm">
+                        <li>Ce contrat est régi par les lois du Québec</li>
+                        <li>Les tribunaux du district de Chicoutimi ont compétence exclusive pour tout litige</li>
+                    </ul>
+
+                    <div class="mt-8 p-4 bg-orange-50 border border-orange-200 rounded-xl text-sm">
+                        <p class="font-bold text-gray-900 mb-3">EN CRÉANT MON COMPTE AVEC ACHAT MINIMUM, JE CONFIRME :</p>
+                        <ul class="list-disc pl-6 space-y-1 text-gray-700">
+                            <li>Avoir lu et accepté l'intégralité de ces conditions générales</li>
+                            <li>M'engager à acheter le volume minimal annuel de <strong class="text-primary" id="termsMinAmount2">$0</strong></li>
+                            <li>Accepter de payer la pénalité si je n'atteins pas le volume minimal</li>
+                        </ul>
+                    </div>
+
+                    <p class="text-xs text-gray-500 mt-6 text-center">
+                        9051-2500 QUÉBEC INC. faisant affaires sous le nom Les Jardins du Saguenay<br>
+                        2380, rue Cantin, Saguenay, Québec, G7X 8S6
+                    </p>
+                </div>
+
+            </div>
+            <div class="p-4 border-t border-gray-200 bg-gray-50">
+                <button type="button" class="close-modal w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors">
+                    Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="tracking.js"></script>
+</body>
+</html>

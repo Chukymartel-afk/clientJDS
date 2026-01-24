@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Administration | Les Jardins du Saguenay</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#FF7A00",
+                        "primary-dark": "#E66E00",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 min-h-screen font-display flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <img src="../assets/logo.png" alt="Les Jardins du Saguenay" class="h-16 mx-auto mb-4 brightness-0 invert"/>
+            <h1 class="text-2xl font-bold text-white">Espace Administration</h1>
+            <p class="text-gray-400 text-sm mt-1">Gestion des demandes d'ouverture de compte</p>
+        </div>
+
+        <!-- Login Card -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            <form id="loginForm">
+                <!-- Error Message -->
+                <div id="errorMessage" class="hidden mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center gap-3">
+                    <span class="material-symbols-outlined text-red-500">error</span>
+                    <span id="errorText">Identifiants invalides</span>
+                </div>
+
+                <!-- Username -->
+                <div class="mb-5">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Nom d'utilisateur</label>
+                    <div class="relative">
+                        <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                            <span class="material-symbols-outlined">person</span>
+                        </div>
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            class="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-primary focus:bg-white outline-none transition-all"
+                            placeholder="admin"
+                            required
+                            autocomplete="username"
+                        />
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Mot de passe</label>
+                    <div class="relative">
+                        <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                            <span class="material-symbols-outlined">lock</span>
+                        </div>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="w-full pl-12 pr-12 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-primary focus:bg-white outline-none transition-all"
+                            placeholder="••••••••"
+                            required
+                            autocomplete="current-password"
+                        />
+                        <button
+                            type="button"
+                            id="togglePassword"
+                            class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                            <span class="material-symbols-outlined" id="eyeIcon">visibility</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <button
+                    type="submit"
+                    id="submitBtn"
+                    class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/30"
+                >
+                    <span class="material-symbols-outlined">login</span>
+                    <span>Se connecter</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <p class="text-center text-gray-500 text-xs mt-6">
+            Les Jardins du Saguenay - Espace sécurisé
+        </p>
+    </div>
+
+    <script>
+        // Check if already logged in
+        fetch('/api/auth/me')
+            .then(res => res.json())
+            .then(data => {
+                if (data.authenticated) {
+                    window.location.href = '/admin/dashboard';
+                }
+            });
+
+        // Toggle password visibility
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+        const eyeIcon = document.getElementById('eyeIcon');
+
+        togglePassword.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            eyeIcon.textContent = type === 'password' ? 'visibility' : 'visibility_off';
+        });
+
+        // Login form
+        const loginForm = document.getElementById('loginForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const submitBtn = document.getElementById('submitBtn');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            errorMessage.classList.add('hidden');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `
+                <span class="material-symbols-outlined animate-spin">progress_activity</span>
+                <span>Connexion...</span>
+            `;
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    window.location.href = '/admin/dashboard';
+                } else {
+                    errorText.textContent = data.error || 'Identifiants invalides';
+                    errorMessage.classList.remove('hidden');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `
+                        <span class="material-symbols-outlined">login</span>
+                        <span>Se connecter</span>
+                    `;
+                }
+            } catch (error) {
+                errorText.textContent = 'Erreur de connexion au serveur';
+                errorMessage.classList.remove('hidden');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `
+                    <span class="material-symbols-outlined">login</span>
+                    <span>Se connecter</span>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
