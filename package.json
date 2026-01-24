@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Formulaire d'ouverture de compte - Les Jardins du Saguenay",
   "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
