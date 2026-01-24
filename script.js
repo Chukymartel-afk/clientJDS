@@ -408,8 +408,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         const card = e.target.closest('.sector-card');
         if (card) {
+            console.log('Sector card clicked:', card.dataset.sector);
+
+            // Get fresh list of all sector cards
+            const allSectorCards = document.querySelectorAll('.sector-card');
+
             // Remove selection from all
-            sectorCards.forEach(c => {
+            allSectorCards.forEach(c => {
                 c.classList.remove('border-primary', 'bg-orange-50');
                 c.classList.add('border-gray-200');
                 const icon = c.querySelector('.material-symbols-outlined');
@@ -428,7 +433,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon.classList.add('text-primary');
             }
 
-            selectedSectorInput.value = card.dataset.sector;
+            // Update hidden input
+            const sectorInput = document.getElementById('selectedSector');
+            if (sectorInput) {
+                sectorInput.value = card.dataset.sector;
+                console.log('Sector set to:', sectorInput.value);
+            }
         }
     });
 
