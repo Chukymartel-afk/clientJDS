@@ -6,6 +6,10 @@ const pgSession = require('connect-pg-simple')(session);
 const cors = require('cors');
 const path = require('path');
 
+// Services
+const { sendApprovalEmail, verifySmtpConnection } = require('./services/emailService');
+const { createDadhriClient, verifyDadhriConnection } = require('./services/dadhriService');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -52,9 +56,28 @@ async function initDatabase() {
                 signature TEXT NOT NULL,
                 status VARCHAR(50) DEFAULT 'nouvelle',
                 notes TEXT,
+                dadhri_code VARCHAR(50),
+                dadhri_synced_at TIMESTAMP,
+                email_sent_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        `);
+
+        // Migration: ajouter les nouvelles colonnes si elles n'existent pas
+        await client.query(`
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'demandes' AND column_name = 'dadhri_code') THEN
+                    ALTER TABLE demandes ADD COLUMN dadhri_code VARCHAR(50);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'demandes' AND column_name = 'dadhri_synced_at') THEN
+                    ALTER TABLE demandes ADD COLUMN dadhri_synced_at TIMESTAMP;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'demandes' AND column_name = 'email_sent_at') THEN
+                    ALTER TABLE demandes ADD COLUMN email_sent_at TIMESTAMP;
+                END IF;
+            END $$;
         `);
 
         // Analytics tables
@@ -612,12 +635,61 @@ app.get('/api/demandes/:id', requireAuth, async (req, res) => {
 app.patch('/api/demandes/:id', requireAuth, async (req, res) => {
     try {
         const { status, notes } = req.body;
+        const demandeId = parseInt(req.params.id);
+
+        // Récupérer l'état actuel de la demande
+        const currentResult = await pool.query('SELECT * FROM demandes WHERE id = $1', [demandeId]);
+        if (currentResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Demande non trouvée' });
+        }
+
+        const demande = currentResult.rows[0];
+        const wasApproved = demande.status === 'approuvee';
+        const isBeingApproved = status === 'approuvee' && !wasApproved;
+
+        // Mettre à jour le statut
         await pool.query(
             'UPDATE demandes SET status = $1, notes = $2, updated_at = NOW() WHERE id = $3',
-            [status, notes, parseInt(req.params.id)]
+            [status, notes, demandeId]
         );
-        res.json({ success: true });
+
+        let emailResult = null;
+        let dadhriResult = null;
+
+        // Si le statut passe à "approuvee", déclencher email et création Dadhri
+        if (isBeingApproved) {
+            // Récupérer les données fraîches
+            const freshResult = await pool.query('SELECT * FROM demandes WHERE id = $1', [demandeId]);
+            const freshDemande = freshResult.rows[0];
+
+            // 1. Envoyer l'email de confirmation
+            emailResult = await sendApprovalEmail(freshDemande);
+            if (emailResult.success) {
+                await pool.query(
+                    'UPDATE demandes SET email_sent_at = NOW() WHERE id = $1',
+                    [demandeId]
+                );
+            }
+
+            // 2. Créer le client dans Dadhri
+            dadhriResult = await createDadhriClient(freshDemande);
+            if (dadhriResult.success) {
+                await pool.query(
+                    'UPDATE demandes SET dadhri_code = $1, dadhri_synced_at = NOW() WHERE id = $2',
+                    [dadhriResult.clientCode, demandeId]
+                );
+            }
+
+            console.log(`Demande #${demandeId} approuvée - Email: ${emailResult.success ? 'OK' : 'ÉCHEC'}, Dadhri: ${dadhriResult.success ? dadhriResult.clientCode : 'ÉCHEC'}`);
+        }
+
+        res.json({
+            success: true,
+            email: emailResult,
+            dadhri: dadhriResult
+        });
     } catch (error) {
+        console.error('Erreur mise à jour demande:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

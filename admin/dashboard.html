@@ -402,23 +402,41 @@
             <div class="p-6 overflow-y-auto flex-1" id="demandeDetails">
                 <!-- Content loaded dynamically -->
             </div>
-            <div class="p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between gap-4">
-                <select id="statusSelect" class="px-4 py-2 border border-gray-300 rounded-lg focus:border-primary outline-none">
+            <div id="modalFooter" class="p-4 border-t border-gray-200 bg-gray-50">
+                <!-- Boutons pour demande en attente -->
+                <div id="pendingActions" class="flex items-center justify-between gap-4">
+                    <button id="deleteDemandeBtn" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">delete</span>
+                        Supprimer
+                    </button>
+                    <div class="flex gap-3">
+                        <button id="refuseBtn" class="px-5 py-2.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-2 font-medium">
+                            <span class="material-symbols-outlined text-lg">close</span>
+                            Refuser
+                        </button>
+                        <button id="approveBtn" class="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 font-bold shadow-lg shadow-green-600/30">
+                            <span class="material-symbols-outlined text-lg">check_circle</span>
+                            Accepter le compte
+                        </button>
+                    </div>
+                </div>
+                <!-- Statut pour demande déjà traitée -->
+                <div id="processedStatus" class="hidden flex items-center justify-between gap-4">
+                    <button id="deleteDemandeBtn2" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">delete</span>
+                        Supprimer
+                    </button>
+                    <div id="statusBadge" class="px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+                        <!-- Dynamically filled -->
+                    </div>
+                </div>
+                <!-- Hidden select for compatibility -->
+                <select id="statusSelect" class="hidden">
                     <option value="nouvelle">Nouvelle</option>
                     <option value="en_cours">En cours</option>
                     <option value="approuvee">Approuvée</option>
                     <option value="refusee">Refusée</option>
                 </select>
-                <div class="flex gap-2">
-                    <button id="deleteDemandeBtn" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-2">
-                        <span class="material-symbols-outlined text-lg">delete</span>
-                        Supprimer
-                    </button>
-                    <button id="saveStatusBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2">
-                        <span class="material-symbols-outlined text-lg">save</span>
-                        Enregistrer
-                    </button>
-                </div>
             </div>
         </div>
     </div>
@@ -959,7 +977,7 @@
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="text-xs text-gray-500 uppercase tracking-wider">Téléphone</label>
+                            <label class="text-xs text-gray-500 uppercase tracking-wider">Téléphone du commerce</label>
                             <p class="font-medium text-gray-900"><a href="tel:${d.phone}" class="text-primary hover:underline">${d.phone}</a></p>
                         </div>
                         <div>
@@ -967,6 +985,32 @@
                             <p class="font-medium text-gray-900 font-signature text-xl">${d.signature}</p>
                         </div>
                     </div>
+
+                    ${d.dadhri_code || d.email_sent_at ? `
+                    <div class="pt-4 border-t border-gray-200">
+                        <label class="text-xs text-gray-500 uppercase tracking-wider mb-3 block">Intégrations</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            ${d.dadhri_code ? `
+                            <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                                <span class="material-symbols-outlined text-green-600">cloud_done</span>
+                                <div>
+                                    <p class="text-xs text-green-600">Dadhri</p>
+                                    <p class="font-bold text-green-800">${d.dadhri_code}</p>
+                                </div>
+                            </div>
+                            ` : ''}
+                            ${d.email_sent_at ? `
+                            <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                                <span class="material-symbols-outlined text-green-600">mark_email_read</span>
+                                <div>
+                                    <p class="text-xs text-green-600">Email envoyé</p>
+                                    <p class="font-medium text-green-800">${new Date(d.email_sent_at).toLocaleDateString('fr-CA')}</p>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
 
                     <div class="pt-4 border-t border-gray-200">
                         <label class="text-xs text-gray-500 uppercase tracking-wider">Notes internes</label>
@@ -981,34 +1025,177 @@
             `;
 
             document.getElementById('statusSelect').value = d.status;
+
+            // Afficher les bons boutons selon le statut
+            const pendingActions = document.getElementById('pendingActions');
+            const processedStatus = document.getElementById('processedStatus');
+            const statusBadge = document.getElementById('statusBadge');
+            const modalFooter = document.getElementById('modalFooter');
+
+            modalFooter.classList.remove('hidden');
+
+            if (d.status === 'nouvelle' || d.status === 'en_cours') {
+                // Demande en attente - afficher boutons Accepter/Refuser
+                pendingActions.classList.remove('hidden');
+                processedStatus.classList.add('hidden');
+            } else {
+                // Demande déjà traitée - afficher le statut
+                pendingActions.classList.add('hidden');
+                processedStatus.classList.remove('hidden');
+
+                if (d.status === 'approuvee') {
+                    statusBadge.className = 'px-4 py-2 rounded-lg font-medium flex items-center gap-2 bg-green-100 text-green-800';
+                    statusBadge.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Compte approuvé';
+                } else if (d.status === 'refusee') {
+                    statusBadge.className = 'px-4 py-2 rounded-lg font-medium flex items-center gap-2 bg-red-100 text-red-800';
+                    statusBadge.innerHTML = '<span class="material-symbols-outlined">cancel</span> Compte refusé';
+                }
+            }
+
             openModal(document.getElementById('demandeModal'));
         }
 
-        // Save status
-        document.getElementById('saveStatusBtn').addEventListener('click', async () => {
-            const status = document.getElementById('statusSelect').value;
+        // Bouton ACCEPTER
+        document.getElementById('approveBtn').addEventListener('click', async () => {
             const notes = document.getElementById('notesInput').value;
+            const btn = document.getElementById('approveBtn');
 
-            await fetch(`/api/demandes/${currentDemandeId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status, notes })
-            });
+            // Désactiver le bouton pendant le traitement
+            btn.disabled = true;
+            btn.innerHTML = `
+                <span class="material-symbols-outlined text-lg animate-spin">progress_activity</span>
+                Création du compte...
+            `;
 
-            closeModal(document.getElementById('demandeModal'));
-            loadDemandes();
-            loadStats();
+            try {
+                const res = await fetch(`/api/demandes/${currentDemandeId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'approuvee', notes })
+                });
+
+                const result = await res.json();
+                showApprovalResult(result);
+                loadDemandes();
+                loadStats();
+            } catch (error) {
+                alert('Erreur lors de l\'approbation');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `
+                    <span class="material-symbols-outlined text-lg">check_circle</span>
+                    Accepter le compte
+                `;
+            }
         });
 
-        // Delete demande
-        document.getElementById('deleteDemandeBtn').addEventListener('click', async () => {
+        // Bouton REFUSER
+        document.getElementById('refuseBtn').addEventListener('click', async () => {
+            if (!confirm('Êtes-vous sûr de vouloir refuser cette demande?')) return;
+
+            const notes = document.getElementById('notesInput').value;
+            const btn = document.getElementById('refuseBtn');
+
+            btn.disabled = true;
+            btn.innerHTML = `
+                <span class="material-symbols-outlined text-lg animate-spin">progress_activity</span>
+                Refus...
+            `;
+
+            try {
+                await fetch(`/api/demandes/${currentDemandeId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'refusee', notes })
+                });
+
+                closeModal(document.getElementById('demandeModal'));
+                loadDemandes();
+                loadStats();
+            } catch (error) {
+                alert('Erreur lors du refus');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `
+                    <span class="material-symbols-outlined text-lg">close</span>
+                    Refuser
+                `;
+            }
+        });
+
+        // Afficher le résultat de l'approbation
+        function showApprovalResult(result) {
+            const emailOk = result.email?.success;
+            const dadhriOk = result.dadhri?.success;
+            const dadhriCode = result.dadhri?.clientCode;
+
+            const modal = document.getElementById('demandeDetails');
+            modal.innerHTML = `
+                <div class="text-center py-8">
+                    <div class="size-20 mx-auto mb-6 rounded-full ${emailOk && dadhriOk ? 'bg-green-100' : 'bg-yellow-100'} flex items-center justify-center">
+                        <span class="material-symbols-outlined text-4xl ${emailOk && dadhriOk ? 'text-green-600' : 'text-yellow-600'}">
+                            ${emailOk && dadhriOk ? 'check_circle' : 'warning'}
+                        </span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Compte approuvé!</h3>
+                    <p class="text-gray-600 mb-8">Voici le résultat des actions automatiques:</p>
+
+                    <div class="space-y-4 text-left max-w-sm mx-auto">
+                        <!-- Email -->
+                        <div class="flex items-center gap-4 p-4 rounded-xl ${emailOk ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}">
+                            <span class="material-symbols-outlined text-2xl ${emailOk ? 'text-green-600' : 'text-red-600'}">
+                                ${emailOk ? 'mark_email_read' : 'mark_email_unread'}
+                            </span>
+                            <div>
+                                <p class="font-semibold ${emailOk ? 'text-green-800' : 'text-red-800'}">
+                                    ${emailOk ? 'Email envoyé' : 'Email non envoyé'}
+                                </p>
+                                <p class="text-sm ${emailOk ? 'text-green-600' : 'text-red-600'}">
+                                    ${emailOk ? 'Confirmation envoyée au client' : (result.email?.error || 'Configuration SMTP manquante')}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Dadhri -->
+                        <div class="flex items-center gap-4 p-4 rounded-xl ${dadhriOk ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}">
+                            <span class="material-symbols-outlined text-2xl ${dadhriOk ? 'text-green-600' : 'text-red-600'}">
+                                ${dadhriOk ? 'cloud_done' : 'cloud_off'}
+                            </span>
+                            <div>
+                                <p class="font-semibold ${dadhriOk ? 'text-green-800' : 'text-red-800'}">
+                                    ${dadhriOk ? 'Compte Dadhri créé' : 'Compte Dadhri non créé'}
+                                </p>
+                                <p class="text-sm ${dadhriOk ? 'text-green-600' : 'text-red-600'}">
+                                    ${dadhriOk ? `Code client: <strong>${dadhriCode}</strong>` : (result.dadhri?.error || 'API Key non configurée')}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        onclick="closeModal(document.getElementById('demandeModal'))"
+                        class="mt-8 px-8 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-colors"
+                    >
+                        Fermer
+                    </button>
+                </div>
+            `;
+
+            // Cacher le footer
+            document.getElementById('modalFooter').classList.add('hidden');
+        }
+
+        // Delete demande (les deux boutons)
+        async function deleteDemande() {
             if (confirm('Êtes-vous sûr de vouloir supprimer cette demande ?')) {
                 await fetch(`/api/demandes/${currentDemandeId}`, { method: 'DELETE' });
                 closeModal(document.getElementById('demandeModal'));
                 loadDemandes();
                 loadStats();
             }
-        });
+        }
+        document.getElementById('deleteDemandeBtn').addEventListener('click', deleteDemande);
+        document.getElementById('deleteDemandeBtn2').addEventListener('click', deleteDemande);
 
         // =====================================================
         // Admins
