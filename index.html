@@ -160,6 +160,189 @@
             0% { left: -100%; }
             50%, 100% { left: 100%; }
         }
+        /* Mobile Responsive Improvements */
+        @media (max-width: 768px) {
+            .gradient-bg {
+                min-height: 100vh;
+                padding-bottom: 2rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            /* Header mobile */
+            header.flex {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+            header img {
+                height: 3rem !important;
+            }
+            header a.flex {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+            header a .size-10 {
+                width: 2rem;
+                height: 2rem;
+            }
+
+            /* Progress bar mobile */
+            .progress-line, .progress-line-fill {
+                margin-left: 2rem !important;
+                margin-right: 2rem !important;
+            }
+            .size-12 {
+                width: 2.5rem;
+                height: 2.5rem;
+            }
+            .size-12 .material-symbols-outlined {
+                font-size: 1.25rem;
+            }
+            .size-12 .text-xl {
+                font-size: 1rem;
+            }
+
+            /* Form card mobile */
+            .max-w-3xl .bg-white.rounded-3xl {
+                padding: 1.5rem !important;
+                border-radius: 1.5rem;
+            }
+
+            /* Titles mobile */
+            .text-3xl {
+                font-size: 1.5rem !important;
+            }
+            .text-4xl {
+                font-size: 1.75rem !important;
+            }
+
+            /* Sector grid mobile - 2 columns */
+            #sectorGrid2 {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 0.75rem;
+            }
+            #sectorGrid2 button {
+                padding: 1rem 0.5rem;
+            }
+            #sectorGrid2 .material-symbols-outlined {
+                font-size: 2rem;
+            }
+            #sectorGrid2 .text-sm {
+                font-size: 0.75rem;
+            }
+
+            /* Promo card mobile */
+            #promoCard .flex.items-center.gap-5 {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+            #promoCard .size-20 {
+                width: 4rem;
+                height: 4rem;
+            }
+            #promoCard .text-4xl {
+                font-size: 1.75rem;
+            }
+            #promoCard .text-xl {
+                font-size: 1rem;
+            }
+            #promoCard .mt-5.pt-4 {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+            #promoCard .mt-5.pt-4 > div:first-child {
+                display: none;
+            }
+            #promoCard .mt-5.pt-4 .flex.items-center.gap-2:last-child {
+                width: 100%;
+                justify-content: center;
+            }
+
+            /* Navigation buttons mobile */
+            .flex.gap-4 {
+                flex-direction: column-reverse;
+            }
+            .flex.gap-4 button {
+                width: 100%;
+            }
+            .flex.gap-4 button[data-prev] {
+                flex: none !important;
+            }
+            .flex.gap-4 button[data-next],
+            .flex.gap-4 button[type="submit"] {
+                flex: none !important;
+            }
+
+            /* Summary cards mobile */
+            .bg-gray-50.rounded-2xl .flex.justify-between {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+            }
+            .bg-gray-50.rounded-2xl .text-right {
+                text-align: left;
+                max-width: 100%;
+            }
+
+            /* Input fields mobile */
+            input, select {
+                font-size: 16px !important; /* Prevents zoom on iOS */
+            }
+
+            /* Modal mobile */
+            #modalPrivacy > div,
+            #modalTerms > div {
+                max-height: 95vh;
+                margin: 0.5rem;
+                border-radius: 1rem;
+            }
+            #modalPrivacy .p-6,
+            #modalTerms .p-6 {
+                padding: 1rem;
+            }
+            #modalPrivacy h3,
+            #modalTerms h3 {
+                font-size: 1.25rem;
+            }
+
+            /* Step 1 form mobile */
+            #step1Layout .max-w-\[520px\] {
+                padding: 1.5rem !important;
+            }
+            #step1Layout .grid-cols-2:not(.city-postal-grid) {
+                grid-template-columns: 1fr !important;
+            }
+            .city-postal-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+            .city-postal-grid input {
+                padding: 0.75rem !important;
+            }
+
+            /* Success state mobile */
+            .form-step-alt[data-step="success"] .size-28 {
+                width: 5rem;
+                height: 5rem;
+            }
+            .form-step-alt[data-step="success"] .text-6xl {
+                font-size: 2.5rem;
+            }
+        }
+
+        /* Small phones */
+        @media (max-width: 380px) {
+            #sectorGrid2 {
+                grid-template-columns: 1fr 1fr !important;
+            }
+            #sectorGrid2 button {
+                padding: 0.75rem 0.25rem;
+            }
+            .text-3xl {
+                font-size: 1.25rem !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-[#f4f4f2] font-display">
@@ -242,12 +425,16 @@
         </div>
 
         <!-- Right Panel - Form Step 1 -->
-        <div class="flex flex-1 flex-col bg-[#f4f4f2] items-center justify-center px-8 lg:px-16 h-full overflow-hidden">
-            <div class="w-full max-w-[520px] flex flex-col bg-white p-8 lg:p-10 rounded-2xl shadow-2xl shadow-black/5 border border-gray-200">
+        <div class="flex flex-1 flex-col bg-[#f4f4f2] items-center justify-center px-4 sm:px-8 lg:px-16 py-6 lg:py-0 h-full overflow-y-auto lg:overflow-hidden">
+            <div class="w-full max-w-[520px] flex flex-col bg-white p-5 sm:p-8 lg:p-10 rounded-2xl shadow-2xl shadow-black/5 border border-gray-200">
 
                 <!-- Mobile Header -->
-                <div class="lg:hidden flex items-center gap-3 mb-2">
+                <div class="lg:hidden flex items-center justify-between mb-4">
                     <img src="assets/logo.png" alt="Les Jardins du Saguenay" class="h-10"/>
+                    <a href="tel:4185421797" class="flex items-center gap-2 text-primary font-semibold text-sm">
+                        <span class="material-symbols-outlined text-lg">call</span>
+                        418 542-1797
+                    </a>
                 </div>
 
                 <!-- Form Step 1 -->
@@ -329,7 +516,7 @@
                             </div>
 
                             <!-- City & Postal Code -->
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-2 gap-3 sm:gap-4 city-postal-grid">
                                 <div class="flex flex-col gap-1.5">
                                     <label class="text-[#333] text-xs font-bold uppercase tracking-wider">Ville</label>
                                     <input
