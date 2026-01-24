@@ -305,14 +305,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchAddresses(query) {
         try {
+            // Ajouter ", Québec" à la recherche pour prioriser les résultats au Québec
+            const searchQuery = query + ', Québec, Canada';
             const response = await fetch(
                 `https://nominatim.openstreetmap.org/search?` +
-                `format=json&q=${encodeURIComponent(query)}&countrycodes=ca&limit=5&addressdetails=1`,
+                `format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=ca&limit=5&addressdetails=1`,
                 { headers: { 'Accept-Language': 'fr' } }
             );
 
             const data = await response.json();
-            displayAddresses(data);
+            // Filtrer pour ne garder que les adresses du Québec
+            const quebecAddresses = data.filter(addr => {
+                const state = addr.address?.state || addr.address?.province || '';
+                return state.toLowerCase().includes('québec') || state.toLowerCase().includes('quebec') || state === 'QC';
+            });
+            displayAddresses(quebecAddresses);
         } catch (error) {
             console.error('Erreur de recherche d\'adresse:', error);
         }
