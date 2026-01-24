@@ -104,8 +104,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // =====================================================
 
     function goToStep(step) {
-        // Validate before moving forward
-        if (step > currentStep && !validateStep(currentStep)) {
+        // Handle success step specially
+        if (step === 'success') {
+            const formStepsAlt = document.querySelectorAll('.form-step-alt');
+            formStepsAlt.forEach(s => s.classList.add('hidden'));
+            const successStep = document.querySelector('.form-step-alt[data-step="success"]');
+            if (successStep) {
+                successStep.classList.remove('hidden');
+            }
+            // Update progress bar to show all completed
+            if (progressFill) {
+                progressFill.style.setProperty('--progress', '100%');
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        // Validate before moving forward (only for numeric steps)
+        if (typeof step === 'number' && step > currentStep && !validateStep(currentStep)) {
             return;
         }
 
@@ -649,53 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Special handling for success step
-    function goToStep(step) {
-        if (step === 'success') {
-            const formStepsAlt = document.querySelectorAll('.form-step-alt');
-            formStepsAlt.forEach(s => s.classList.add('hidden'));
-            document.querySelector('.form-step-alt[data-step="success"]').classList.remove('hidden');
-
-            // Update progress bar to show all completed
-            progressFill.style.setProperty('--progress', '100%');
-            progressCircle3.className = 'size-12 rounded-full bg-green-500 flex items-center justify-center shadow-lg z-10';
-            document.getElementById('progressIcon3').outerHTML = '<span class="material-symbols-outlined text-white text-2xl" id="progressIcon3">check</span>';
-            progressLabel3.className = 'mt-3 text-sm font-semibold text-green-600';
-            return;
-        }
-
-        // Validate before moving forward
-        if (step > currentStep && !validateStep(currentStep)) {
-            return;
-        }
-
-        currentStep = step;
-
-        // Switch layout
-        showLayout(step);
-
-        // Update progress bar for steps 2 & 3
-        if (step >= 2) {
-            updateProgressBar(step);
-        }
-
-        // Show/hide form steps in step23Layout
-        const formStepsAlt = document.querySelectorAll('.form-step-alt');
-        formStepsAlt.forEach(s => s.classList.add('hidden'));
-
-        const targetStep = document.querySelector(`.form-step-alt[data-step="${step}"]`);
-        if (targetStep) {
-            targetStep.classList.remove('hidden');
-        }
-
-        // Update summary on step 3
-        if (step === 3) {
-            updateSummary();
-        }
-
-        // Scroll to top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    // Note: goToStep is already defined above, this was a duplicate that was removed
 
     // =====================================================
     // Input Focus Effects
