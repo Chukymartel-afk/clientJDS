@@ -402,27 +402,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // =====================================================
-    // Sector Selection
+    // Sector Selection - using event delegation
     // =====================================================
 
-    sectorCards.forEach(card => {
-        card.addEventListener('click', () => {
+    document.addEventListener('click', (e) => {
+        const card = e.target.closest('.sector-card');
+        if (card) {
             // Remove selection from all
             sectorCards.forEach(c => {
                 c.classList.remove('border-primary', 'bg-orange-50');
                 c.classList.add('border-gray-200');
-                c.querySelector('.material-symbols-outlined').classList.remove('text-primary');
-                c.querySelector('.material-symbols-outlined').classList.add('text-gray-400');
+                const icon = c.querySelector('.material-symbols-outlined');
+                if (icon) {
+                    icon.classList.remove('text-primary');
+                    icon.classList.add('text-gray-400');
+                }
             });
 
             // Select clicked card
             card.classList.remove('border-gray-200');
             card.classList.add('border-primary', 'bg-orange-50');
-            card.querySelector('.material-symbols-outlined').classList.remove('text-gray-400');
-            card.querySelector('.material-symbols-outlined').classList.add('text-primary');
+            const icon = card.querySelector('.material-symbols-outlined');
+            if (icon) {
+                icon.classList.remove('text-gray-400');
+                icon.classList.add('text-primary');
+            }
 
             selectedSectorInput.value = card.dataset.sector;
-        });
+        }
     });
 
     // =====================================================
