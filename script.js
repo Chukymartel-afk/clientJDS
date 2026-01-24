@@ -269,12 +269,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Edit buttons
-    document.querySelectorAll('[data-edit]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const editStep = parseInt(btn.dataset.edit);
+    // Edit buttons - using event delegation to handle clicks on icon inside button
+    document.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('[data-edit]');
+        if (editBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const editStep = parseInt(editBtn.dataset.edit);
+            console.log('Edit button clicked, going to step:', editStep);
             goToStep(editStep);
-        });
+        }
     });
 
     // =====================================================
