@@ -9,7 +9,10 @@
       "Bash(git remote set-url:*)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nOptimisation responsive mobile du formulaire\n\n- Header mobile avec logo + téléphone\n- Grille secteurs 2 colonnes sur mobile\n- Carte promo en layout vertical\n- Boutons empilés verticalement\n- Modals plein écran\n- Inputs 16px pour éviter zoom iOS\n- Padding et espacements optimisés\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nMigration vers PostgreSQL pour stockage cloud permanent\n\n- Remplacé sql.js par pg \\(PostgreSQL\\)\n- Ajouté connect-pg-simple pour les sessions\n- Adapté toutes les requêtes SQL pour PostgreSQL\n- Les données sont maintenant persistantes dans le cloud\n\nConfiguration Railway requise:\n- Ajouter un service PostgreSQL\n- Variable DATABASE_URL auto-générée\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "Bash(node:*)"
     ]
   }
 }
