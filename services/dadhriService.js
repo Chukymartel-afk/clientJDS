@@ -2,57 +2,17 @@
 // Service d'intégration API Dadhri.NET
 // =====================================================
 
-const DADHRI_BASE_URL = 'https://online.dadhri.net/api';
+// URL de base Dadhri
+const DADHRI_BASE_URL = process.env.DADHRI_API_URL || 'https://jds-demo.dadhri.net:1443/dadhri.web/rest';
 
 // =====================================================
-// Génération du code client unique
+// Génération du code client unique (max 10 caractères)
 // =====================================================
 
 function generateClientCode(demande) {
-    // Format: CLI-{ANNÉE}-{ID demande padded}
-    const year = new Date().getFullYear();
-    const paddedId = String(demande.id).padStart(4, '0');
-    return `CLI-${year}-${paddedId}`;
-}
-
-// =====================================================
-// Construction du champ Notes structuré
-// =====================================================
-
-function buildNotesField(demande) {
-    const parts = [];
-
-    if (demande.owner_name) {
-        parts.push(`Propriétaire: ${demande.owner_name}`);
-    }
-
-    if (demande.sector) {
-        const sectorLabels = {
-            'restaurant': 'Restaurant',
-            'epicerie': 'Épicerie',
-            'hotel': 'Hôtel',
-            'institution': 'Institution',
-            'autre': 'Autre'
-        };
-        parts.push(`Secteur: ${sectorLabels[demande.sector] || demande.sector}`);
-    }
-
-    if (demande.annual_purchase) {
-        parts.push(`Volume annuel: ${demande.annual_purchase}`);
-    }
-
-    if (demande.email_facturation && demande.email_facturation !== demande.email_responsable) {
-        parts.push(`Email facturation: ${demande.email_facturation}`);
-    }
-
-    if (demande.promo_accepted === 'yes') {
-        parts.push(`Carte Promo: Oui (min. ${demande.promo_min_order})`);
-    }
-
-    // Ajouter la date d'approbation
-    parts.push(`Approuvé le: ${new Date().toLocaleDateString('fr-CA')}`);
-
-    return parts.join(' | ');
+    // Format: JDS + ID padded (max 10 caractères)
+    const paddedId = String(demande.id).padStart(6, '0');
+    return `JDS${paddedId}`;
 }
 
 // =====================================================
@@ -60,19 +20,32 @@ function buildNotesField(demande) {
 // =====================================================
 
 function mapDemandeToClient(demande, clientCode) {
+    // Tronquer le nom à 40 caractères max
+    const clientName = (demande.company_name || '').substring(0, 40);
+
+    // Tronquer l'adresse à 40 caractères max
+    const addressLine1 = (demande.address || '').substring(0, 40);
+
+    // Contact name dans line2 si différent du propriétaire
+    let addressLine2 = '';
+    if (demande.contact_name && demande.contact_name !== demande.owner_name) {
+        addressLine2 = `Contact: ${demande.contact_name}`.substring(0, 40);
+    }
+
     return {
-        Code: clientCode,
-        Name: demande.company_name,
-        Address: demande.address,
-        City: demande.city,
-        Province: 'QC', // Toujours Québec
-        PostalCode: demande.postal_code,
-        Phone: demande.phone,
-        Email: demande.email_responsable,
-        ContactName: demande.contact_name || demande.owner_name,
-        Terms: 'Net 30', // Termes par défaut
-        CreditLimit: 5000.00, // Limite initiale par défaut
-        Notes: buildNotesField(demande)
+        id: clientCode,
+        name: clientName,
+        phone: (demande.phone || '').substring(0, 20),
+        email: (demande.email_responsable || '').substring(0, 210),
+        language: 'F',
+        address: {
+            line1: addressLine1,
+            line2: addressLine2,
+            city: (demande.city || '').substring(0, 40),
+            province: 'QC',
+            postal_code: (demande.postal_code || '').substring(0, 10),
+            country: 'CA'
+        }
     };
 }
 
@@ -95,53 +68,63 @@ async function createDadhriClient(demande) {
     const clientCode = generateClientCode(demande);
     const clientData = mapDemandeToClient(demande, clientCode);
 
+    const clientEndpoint = `${DADHRI_BASE_URL}/client`;
+
+    console.log(`Création client Dadhri: ${clientEndpoint}`);
+    console.log(`Données client:`, JSON.stringify(clientData, null, 2));
+
     try {
-        const response = await fetch(`${DADHRI_BASE_URL}/clients?APIKey=${apiKey}`, {
+        const response = await fetch(clientEndpoint, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'api_key': apiKey
             },
             body: JSON.stringify(clientData)
         });
 
         const responseData = await response.json().catch(() => null);
 
-        if (response.ok) {
+        console.log(`Réponse Dadhri (${response.status}):`, responseData);
+
+        if (response.ok && responseData?.success) {
             console.log(`Client créé dans Dadhri: ${clientCode} - ${demande.company_name}`);
             return {
                 success: true,
                 clientCode: clientCode,
-                dadhriId: responseData?.Id,
                 data: responseData
             };
         }
 
         // Gestion des erreurs spécifiques
-        if (response.status === 409) {
+        if (responseData?.errorcode === 'exists') {
             // Code client déjà existant - générer un nouveau code avec timestamp
-            const newCode = `CLI-${Date.now()}`;
+            const newCode = `JDS${Date.now().toString().slice(-7)}`;
             console.log(`Code ${clientCode} existe déjà, réessai avec ${newCode}`);
 
-            const retryData = { ...clientData, Code: newCode };
-            const retryResponse = await fetch(`${DADHRI_BASE_URL}/clients?APIKey=${apiKey}`, {
+            const retryData = { ...clientData, id: newCode };
+            const retryResponse = await fetch(clientEndpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api_key': apiKey
+                },
                 body: JSON.stringify(retryData)
             });
 
-            if (retryResponse.ok) {
-                const retryResponseData = await retryResponse.json().catch(() => null);
+            const retryResponseData = await retryResponse.json().catch(() => null);
+
+            if (retryResponse.ok && retryResponseData?.success) {
                 console.log(`Client créé dans Dadhri avec code alternatif: ${newCode}`);
                 return {
                     success: true,
                     clientCode: newCode,
-                    dadhriId: retryResponseData?.Id,
                     data: retryResponseData
                 };
             }
         }
 
-        if (response.status === 401) {
+        if (responseData?.errorcode === 'invalidapikey') {
             console.error('API Key Dadhri invalide');
             return {
                 success: false,
@@ -149,7 +132,7 @@ async function createDadhriClient(demande) {
             };
         }
 
-        console.error(`Erreur création client Dadhri: ${response.status}`, responseData);
+        console.error(`Erreur création client Dadhri:`, responseData);
         return {
             success: false,
             error: responseData?.message || `Erreur ${response.status}`
@@ -176,9 +159,12 @@ async function verifyDadhriConnection() {
     }
 
     try {
-        // Tenter de lister les clients pour vérifier la connexion
-        const response = await fetch(`${DADHRI_BASE_URL}/clients?APIKey=${apiKey}&$top=1`, {
-            method: 'GET'
+        // Tenter un ping pour vérifier la connexion
+        const response = await fetch(`${DADHRI_BASE_URL}/ping`, {
+            method: 'GET',
+            headers: {
+                'api_key': apiKey
+            }
         });
 
         if (response.ok) {
