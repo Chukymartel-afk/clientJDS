@@ -10,9 +10,16 @@ const DADHRI_BASE_URL = process.env.DADHRI_API_URL || 'https://jds-demo.dadhri.n
 // =====================================================
 
 function generateClientCode(demande) {
-    // Format: JDS + ID padded (max 10 caractères)
-    const paddedId = String(demande.id).padStart(6, '0');
-    return `JDS${paddedId}`;
+    // Le code client = les 7 derniers chiffres du numéro de téléphone
+    const phoneDigits = (demande.phone || '').replace(/\D/g, ''); // Enlever tout sauf les chiffres
+    const clientCode = phoneDigits.slice(-7); // Prendre les 7 derniers chiffres
+
+    // Si pas assez de chiffres, utiliser l'ID comme fallback
+    if (clientCode.length < 7) {
+        return String(demande.id).padStart(7, '0');
+    }
+
+    return clientCode;
 }
 
 // =====================================================
@@ -32,10 +39,13 @@ function mapDemandeToClient(demande, clientCode) {
         addressLine2 = `Contact: ${demande.contact_name}`.substring(0, 40);
     }
 
+    // Formater le téléphone (enlever les caractères non-numériques sauf +)
+    const phoneNumber = (demande.phone || '').replace(/[^\d+]/g, '').substring(0, 20);
+
     return {
         id: clientCode,
         name: clientName,
-        phone: (demande.phone || '').substring(0, 20),
+        phone: phoneNumber,
         email: (demande.email_responsable || '').substring(0, 210),
         language: 'F',
         address: {
