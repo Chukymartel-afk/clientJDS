@@ -810,9 +810,10 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
         doc.fillColor('black');
 
         // Signature box
-        doc.rect(50, doc.y, 250, 50).stroke();
-        doc.fontSize(18).font('Helvetica-Oblique').text(demande.signature, 60, doc.y - 40);
-        doc.moveDown(3);
+        const signatureBoxY = doc.y;
+        doc.rect(50, signatureBoxY, 250, 50).stroke();
+        doc.fontSize(18).font('Helvetica-Oblique').text(demande.signature, 60, signatureBoxY + 15);
+        doc.y = signatureBoxY + 60;
 
         doc.fontSize(10).font('Helvetica');
         doc.text(`Signé électroniquement le ${dateCreation}`, 50);
