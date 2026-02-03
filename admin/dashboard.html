@@ -405,10 +405,16 @@
             <div id="modalFooter" class="p-4 border-t border-gray-200 bg-gray-50">
                 <!-- Boutons pour demande en attente -->
                 <div id="pendingActions" class="flex items-center justify-between gap-4">
-                    <button id="deleteDemandeBtn" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
-                        <span class="material-symbols-outlined text-lg">delete</span>
-                        Supprimer
-                    </button>
+                    <div class="flex gap-2">
+                        <button id="deleteDemandeBtn" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">delete</span>
+                            Supprimer
+                        </button>
+                        <button id="downloadPdfBtn" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">picture_as_pdf</span>
+                            PDF
+                        </button>
+                    </div>
                     <div class="flex gap-3">
                         <button id="refuseBtn" class="px-5 py-2.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-2 font-medium">
                             <span class="material-symbols-outlined text-lg">close</span>
@@ -422,10 +428,16 @@
                 </div>
                 <!-- Statut pour demande déjà traitée -->
                 <div id="processedStatus" class="hidden flex items-center justify-between gap-4">
-                    <button id="deleteDemandeBtn2" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
-                        <span class="material-symbols-outlined text-lg">delete</span>
-                        Supprimer
-                    </button>
+                    <div class="flex gap-2">
+                        <button id="deleteDemandeBtn2" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">delete</span>
+                            Supprimer
+                        </button>
+                        <button id="downloadPdfBtn2" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">picture_as_pdf</span>
+                            PDF
+                        </button>
+                    </div>
                     <div id="statusBadge" class="px-4 py-2 rounded-lg font-medium flex items-center gap-2">
                         <!-- Dynamically filled -->
                     </div>
@@ -1196,6 +1208,14 @@
         }
         document.getElementById('deleteDemandeBtn').addEventListener('click', deleteDemande);
         document.getElementById('deleteDemandeBtn2').addEventListener('click', deleteDemande);
+
+        // Download PDF
+        function downloadPdf() {
+            if (!currentDemandeId) return;
+            window.open(`/api/demandes/${currentDemandeId}/pdf`, '_blank');
+        }
+        document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdf);
+        document.getElementById('downloadPdfBtn2').addEventListener('click', downloadPdf);
 
         // =====================================================
         // Admins

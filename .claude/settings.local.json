@@ -12,7 +12,15 @@
       "Bash(git push:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nMigration vers PostgreSQL pour stockage cloud permanent\n\n- Remplacé sql.js par pg \\(PostgreSQL\\)\n- Ajouté connect-pg-simple pour les sessions\n- Adapté toutes les requêtes SQL pour PostgreSQL\n- Les données sont maintenant persistantes dans le cloud\n\nConfiguration Railway requise:\n- Ajouter un service PostgreSQL\n- Variable DATABASE_URL auto-générée\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npm install:*)",
+      "Bash(git -C /Users/JDS/Downloads/Ouverture status --short)",
+      "Bash(git -C /Users/JDS/Downloads/Ouverture add package.json)",
+      "Bash(git -C /Users/JDS/Downloads/Ouverture commit -m \"Add Node.js engine version for Railway\")",
+      "Bash(git -C /Users/JDS/Downloads/Ouverture push)",
+      "Bash(git -C /Users/JDS/Downloads/Ouverture add:*)",
+      "Bash(git -C /Users/JDS/Downloads/Ouverture commit -m \"Add Dockerfile to fix Railway build\")",
+      "Bash(git -C /Users/JDS/Downloads/Ouverture commit -m \"Filtrer autocomplétion adresses au Québec seulement\")"
     ]
   }
 }

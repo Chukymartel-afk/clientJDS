@@ -5,6 +5,7 @@ const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const cors = require('cors');
 const path = require('path');
+const PDFDocument = require('pdfkit');
 
 // Services
 const { sendApprovalEmail, verifySmtpConnection } = require('./services/emailService');
@@ -700,6 +701,133 @@ app.delete('/api/demandes/:id', requireAuth, async (req, res) => {
         await pool.query('DELETE FROM demandes WHERE id = $1', [parseInt(req.params.id)]);
         res.json({ success: true });
     } catch (error) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Generate PDF for demande (admin only)
+app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM demandes WHERE id = $1', [parseInt(req.params.id)]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Demande non trouvée' });
+        }
+
+        const demande = result.rows[0];
+        const doc = new PDFDocument({ margin: 50 });
+
+        // Set response headers for PDF download
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=demande-${demande.id}-${demande.company_name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+
+        doc.pipe(res);
+
+        // Header
+        doc.fontSize(24).font('Helvetica-Bold').text('Les Jardins du Saguenay', { align: 'center' });
+        doc.fontSize(14).font('Helvetica').text('Demande d\'ouverture de compte', { align: 'center' });
+        doc.moveDown(2);
+
+        // Date de la demande
+        const dateCreation = new Date(demande.created_at).toLocaleDateString('fr-CA', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        });
+        doc.fontSize(10).text(`Date de la demande: ${dateCreation}`, { align: 'right' });
+        doc.text(`Numéro de demande: ${demande.id}`, { align: 'right' });
+        doc.moveDown(2);
+
+        // Section: Informations de l'entreprise
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#FF7A00').text('INFORMATIONS DE L\'ENTREPRISE');
+        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke('#FF7A00');
+        doc.moveDown(0.5);
+        doc.fillColor('black').font('Helvetica');
+
+        doc.fontSize(11);
+        doc.text(`Nom de l'entreprise: `, { continued: true }).font('Helvetica-Bold').text(demande.company_name);
+        doc.font('Helvetica').text(`Propriétaire: `, { continued: true }).font('Helvetica-Bold').text(demande.owner_name);
+        if (demande.contact_name && demande.contact_name !== demande.owner_name) {
+            doc.font('Helvetica').text(`Personne contact: `, { continued: true }).font('Helvetica-Bold').text(demande.contact_name);
+        }
+        doc.font('Helvetica').text(`Adresse: `, { continued: true }).font('Helvetica-Bold').text(`${demande.address}, ${demande.city}, ${demande.postal_code}`);
+        doc.moveDown(1.5);
+
+        // Section: Activité
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#FF7A00').text('ACTIVITÉ');
+        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke('#FF7A00');
+        doc.moveDown(0.5);
+        doc.fillColor('black').font('Helvetica');
+
+        const sectorLabels = {
+            'restaurant': 'Restaurant',
+            'hotellerie': 'Hôtellerie',
+            'residence': 'Résidence pour aînés',
+            'epicerie': 'Épicerie',
+            'depanneur': 'Dépanneur',
+            'autre': 'Autre'
+        };
+
+        doc.fontSize(11);
+        doc.text(`Secteur d'activité: `, { continued: true }).font('Helvetica-Bold').text(sectorLabels[demande.sector] || demande.sector);
+        doc.font('Helvetica').text(`Volume d'achat annuel estimé: `, { continued: true }).font('Helvetica-Bold').text(`$${demande.annual_purchase}`);
+
+        if (demande.promo_accepted === 'yes') {
+            doc.font('Helvetica').text(`Programme promo 2%: `, { continued: true }).font('Helvetica-Bold').fillColor('green').text(`Accepté (min. $${demande.promo_min_order}/an)`);
+            doc.fillColor('black');
+        }
+        doc.moveDown(1.5);
+
+        // Section: Coordonnées
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#FF7A00').text('COORDONNÉES');
+        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke('#FF7A00');
+        doc.moveDown(0.5);
+        doc.fillColor('black').font('Helvetica');
+
+        doc.fontSize(11);
+        doc.text(`Courriel responsable: `, { continued: true }).font('Helvetica-Bold').text(demande.email_responsable);
+        doc.font('Helvetica').text(`Courriel facturation: `, { continued: true }).font('Helvetica-Bold').text(demande.email_facturation);
+        doc.font('Helvetica').text(`Téléphone: `, { continued: true }).font('Helvetica-Bold').text(demande.phone);
+        doc.moveDown(2);
+
+        // Section: Conditions générales
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#FF7A00').text('CONDITIONS GÉNÉRALES');
+        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke('#FF7A00');
+        doc.moveDown(0.5);
+        doc.fillColor('black').font('Helvetica');
+
+        doc.fontSize(9);
+        doc.text('En signant ce formulaire, le client accepte les conditions suivantes:', { align: 'left' });
+        doc.moveDown(0.5);
+        doc.text('1. Les termes de paiement sont Net 30 jours à compter de la date de facturation.');
+        doc.text('2. Tout compte en souffrance sera sujet à des frais d\'intérêt de 2% par mois.');
+        doc.text('3. Les Jardins du Saguenay se réserve le droit de modifier les prix sans préavis.');
+        doc.text('4. Les commandes minimales peuvent s\'appliquer selon le secteur d\'activité.');
+        doc.text('5. Le client s\'engage à respecter les horaires de livraison établis.');
+        doc.moveDown(2);
+
+        // Section: Signature
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#FF7A00').text('SIGNATURE ÉLECTRONIQUE');
+        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke('#FF7A00');
+        doc.moveDown(1);
+        doc.fillColor('black');
+
+        // Signature box
+        doc.rect(50, doc.y, 250, 50).stroke();
+        doc.fontSize(18).font('Helvetica-Oblique').text(demande.signature, 60, doc.y - 40);
+        doc.moveDown(3);
+
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Signé électroniquement le ${dateCreation}`, 50);
+        doc.text('Le signataire confirme être autorisé(e) à engager l\'entreprise.');
+
+        // Footer
+        doc.moveDown(3);
+        doc.fontSize(8).fillColor('gray');
+        doc.text('Les Jardins du Saguenay - 418 542-1797 - lesjardinsdusaguenay.com', { align: 'center' });
+        doc.text(`Document généré le ${new Date().toLocaleDateString('fr-CA')}`, { align: 'center' });
+
+        doc.end();
+
+    } catch (error) {
+        console.error('Erreur génération PDF:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
