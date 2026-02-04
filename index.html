@@ -929,12 +929,12 @@
                                         Signature électronique
                                     </span>
                                 </label>
-                                <div class="relative border-2 border-gray-200 rounded-xl bg-white overflow-hidden" id="signatureContainer">
+                                <div class="relative border-2 border-gray-200 rounded-xl bg-white overflow-hidden" id="signatureContainer" style="min-height: 150px;">
                                     <!-- Canvas pour dessiner -->
                                     <canvas
                                         id="signatureCanvas"
-                                        class="w-full touch-none cursor-crosshair"
-                                        style="height: 150px;"
+                                        class="w-full touch-none cursor-crosshair block"
+                                        style="height: 150px; min-height: 150px; background: #fafafa;"
                                     ></canvas>
                                     <!-- Placeholder text -->
                                     <div id="signaturePlaceholder" class="absolute inset-0 flex items-center justify-center pointer-events-none">
