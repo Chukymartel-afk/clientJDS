@@ -722,17 +722,35 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
 
         doc.pipe(res);
 
-        // Header
-        doc.fontSize(24).font('Helvetica-Bold').text('Les Jardins du Saguenay', { align: 'center' });
-        doc.fontSize(14).font('Helvetica').text('Demande d\'ouverture de compte', { align: 'center' });
-        doc.moveDown(2);
-
-        // Date de la demande
         const dateCreation = new Date(demande.created_at).toLocaleDateString('fr-CA', {
             year: 'numeric', month: 'long', day: 'numeric'
         });
-        doc.fontSize(10).text(`Date de la demande: ${dateCreation}`, { align: 'right' });
-        doc.text(`Numéro de demande: ${demande.id}`, { align: 'right' });
+
+        const sectorLabels = {
+            'restaurant': 'Restaurant',
+            'hotellerie': 'Hôtellerie',
+            'residence': 'Résidence pour aînés',
+            'epicerie': 'Épicerie',
+            'depanneur': 'Dépanneur',
+            'autre': 'Autre'
+        };
+
+        // =====================================================
+        // PAGE 1: SOMMAIRE DES INFORMATIONS
+        // =====================================================
+
+        // Header
+        doc.fontSize(24).font('Helvetica-Bold').fillColor('#FF7A00').text('Les Jardins du Saguenay', { align: 'center' });
+        doc.fontSize(12).font('Helvetica').fillColor('black').text('Distributeur alimentaire depuis plus de 40 ans', { align: 'center' });
+        doc.moveDown(0.5);
+        doc.fontSize(18).font('Helvetica-Bold').fillColor('#333').text('FICHE CLIENT', { align: 'center' });
+        doc.moveDown(1);
+
+        // Info box
+        doc.fontSize(10).fillColor('gray');
+        doc.text(`Date de la demande: ${dateCreation}`, { align: 'right' });
+        doc.text(`Numéro de dossier: ${demande.id}`, { align: 'right' });
+        doc.text(`Statut: ${demande.status === 'approuvee' ? 'Approuvé' : demande.status === 'refusee' ? 'Refusé' : 'En attente'}`, { align: 'right' });
         doc.moveDown(2);
 
         // Section: Informations de l'entreprise
@@ -756,21 +774,12 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
         doc.moveDown(0.5);
         doc.fillColor('black').font('Helvetica');
 
-        const sectorLabels = {
-            'restaurant': 'Restaurant',
-            'hotellerie': 'Hôtellerie',
-            'residence': 'Résidence pour aînés',
-            'epicerie': 'Épicerie',
-            'depanneur': 'Dépanneur',
-            'autre': 'Autre'
-        };
-
         doc.fontSize(11);
         doc.text(`Secteur d'activité: `, { continued: true }).font('Helvetica-Bold').text(sectorLabels[demande.sector] || demande.sector);
         doc.font('Helvetica').text(`Volume d'achat annuel estimé: `, { continued: true }).font('Helvetica-Bold').text(`$${demande.annual_purchase}`);
 
         if (demande.promo_accepted === 'yes') {
-            doc.font('Helvetica').text(`Programme promo 2%: `, { continued: true }).font('Helvetica-Bold').fillColor('green').text(`Accepté (min. $${demande.promo_min_order}/an)`);
+            doc.font('Helvetica').text(`Programme promo 2%: `, { continued: true }).font('Helvetica-Bold').fillColor('#22c55e').text(`Accepté (min. ${demande.promo_min_order}/an)`);
             doc.fillColor('black');
         }
         doc.moveDown(1.5);
@@ -787,59 +796,134 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
         doc.font('Helvetica').text(`Téléphone: `, { continued: true }).font('Helvetica-Bold').text(demande.phone);
         doc.moveDown(2);
 
-        // Section: Conditions générales
-        doc.fontSize(14).font('Helvetica-Bold').fillColor('#FF7A00').text('CONDITIONS GÉNÉRALES');
+        // Section: Aperçu signature
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#FF7A00').text('SIGNATURE');
         doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke('#FF7A00');
         doc.moveDown(0.5);
-        doc.fillColor('black').font('Helvetica');
-
-        doc.fontSize(9);
-        doc.text('En signant ce formulaire, le client accepte les conditions suivantes:', { align: 'left' });
-        doc.moveDown(0.5);
-        doc.text('1. Les termes de paiement sont Net 14 jours à compter de la date de facturation.');
-        doc.text('2. Tout compte en souffrance sera sujet à des frais d\'intérêt de 2% par mois.');
-        doc.text('3. Les Jardins du Saguenay se réserve le droit de modifier les prix sans préavis.');
-        doc.text('4. Les commandes minimales peuvent s\'appliquer selon le secteur d\'activité.');
-        doc.text('5. Le client s\'engage à respecter les horaires de livraison établis.');
-        doc.moveDown(2);
-
-        // Section: Signature
-        doc.fontSize(14).font('Helvetica-Bold').fillColor('#FF7A00').text('SIGNATURE ÉLECTRONIQUE');
-        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke('#FF7A00');
-        doc.moveDown(1);
         doc.fillColor('black');
+
+        const sigPreviewY = doc.y;
+        doc.rect(50, sigPreviewY, 200, 60).stroke('#ccc');
+
+        if (demande.signature && demande.signature.startsWith('data:image')) {
+            try {
+                const base64Data = demande.signature.replace(/^data:image\/png;base64,/, '');
+                const signatureBuffer = Buffer.from(base64Data, 'base64');
+                doc.image(signatureBuffer, 55, sigPreviewY + 5, { width: 190, height: 50, fit: [190, 50] });
+            } catch (imgError) {
+                doc.fontSize(10).font('Helvetica-Oblique').text('[Signature]', 100, sigPreviewY + 20);
+            }
+        } else {
+            doc.fontSize(14).font('Helvetica-Oblique').text(demande.signature || '', 60, sigPreviewY + 20);
+        }
+
+        doc.y = sigPreviewY + 70;
+        doc.fontSize(9).fillColor('gray').text(`Signé électroniquement le ${dateCreation}`);
+
+        // Footer page 1
+        doc.fontSize(8).fillColor('gray');
+        doc.text('Les Jardins du Saguenay - 418 542-1797 - lesjardinsdusaguenay.com', 50, 750, { align: 'center' });
+        doc.text('Page 1 sur 2', { align: 'center' });
+
+        // =====================================================
+        // PAGE 2: CONTRAT - CONDITIONS GÉNÉRALES
+        // =====================================================
+        doc.addPage();
+
+        // Header page 2
+        doc.fontSize(20).font('Helvetica-Bold').fillColor('#FF7A00').text('Les Jardins du Saguenay', { align: 'center' });
+        doc.moveDown(0.3);
+        doc.fontSize(16).font('Helvetica-Bold').fillColor('#333').text('CONDITIONS GÉNÉRALES D\'APPROVISIONNEMENT', { align: 'center' });
+        doc.moveDown(0.5);
+
+        // Client info box
+        doc.roundedRect(50, doc.y, 500, 50, 5).fillAndStroke('#f5f5f5', '#ddd');
+        doc.fillColor('black').fontSize(10);
+        doc.text(`Client: ${demande.company_name}`, 60, doc.y - 40);
+        doc.text(`Dossier #${demande.id} - ${dateCreation}`, 60, doc.y - 25);
+        doc.y += 20;
+        doc.moveDown(1);
+
+        // Conditions générales complètes
+        doc.fillColor('black').font('Helvetica');
+        doc.fontSize(9);
+
+        doc.font('Helvetica-Bold').text('1. COMMANDES', { underline: false });
+        doc.font('Helvetica').text('• Vous commandez les Produits par bon de commande électronique sur notre plateforme.');
+        doc.text('• Nous confirmons votre commande par courriel dans les 1 heures ouvrables.');
+        doc.text('• Tous les prix sont selon notre liste de prix en vigueur (taxes en sus).');
+        doc.moveDown(0.5);
+
+        doc.font('Helvetica-Bold').text('2. MODIFICATION ET ANNULATION');
+        doc.font('Helvetica').text('• Vous pouvez modifier ou annuler votre commande jusqu\'à 24 heures avant la livraison.');
+        doc.text('• Annulation tardive ou refus de livraison: frais de désengagement de 50$.');
+        doc.moveDown(0.5);
+
+        doc.font('Helvetica-Bold').text('3. LIVRAISON');
+        doc.font('Helvetica').text('• Nous livrons les Produits à l\'adresse indiquée sur votre commande.');
+        doc.text('• Les frais de livraison sont facturés en sus selon notre grille tarifaire.');
+        doc.text('• Vous devenez propriétaire et responsable des Produits dès leur livraison.');
+        doc.moveDown(0.5);
+
+        doc.font('Helvetica-Bold').text('4. QUALITÉ');
+        doc.font('Helvetica').text('• Les Produits sont emballés selon les règles de l\'art.');
+        doc.text('• Nous garantissons que les Produits sont aptes à la consommation à la date de livraison.');
+        doc.moveDown(0.5);
+
+        doc.font('Helvetica-Bold').text('5. PAIEMENT');
+        doc.font('Helvetica').text('• Le paiement est dû dans les 14 jours suivant la réception de la facture.');
+        doc.text('• En cas de retard: intérêts au taux préférentiel bancaire plus 15% par année.');
+        doc.text('• Solde impayé depuis plus de 30 jours: paiement à la livraison exigé.');
+        doc.moveDown(0.5);
+
+        doc.font('Helvetica-Bold').text('6. CONFIDENTIALITÉ');
+        doc.font('Helvetica').text('• Toutes les informations relatives à nos prix et opérations sont confidentielles.');
+        doc.moveDown(0.5);
+
+        doc.font('Helvetica-Bold').text('7. RÉSILIATION');
+        doc.font('Helvetica').text('• Nous pouvons résilier votre compte sans avis en cas de non-paiement, manquement aux conditions, insolvabilité ou acte criminel.');
+        doc.moveDown(0.5);
+
+        doc.font('Helvetica-Bold').text('8. JURIDICTION');
+        doc.font('Helvetica').text('• Ce contrat est régi par les lois du Québec. Les tribunaux du district de Chicoutimi ont compétence exclusive.');
+        doc.moveDown(1.5);
+
+        // Section signature finale
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#333').text('SIGNATURE DU CLIENT');
+        doc.moveDown(0.5);
+
+        doc.fontSize(9).font('Helvetica').fillColor('black');
+        doc.text('En signant ce document, je confirme avoir lu et accepté l\'intégralité des conditions générales ci-dessus.');
+        doc.text('Je confirme être autorisé(e) à engager l\'entreprise.');
+        doc.moveDown(1);
 
         // Signature box
         const signatureBoxY = doc.y;
         doc.rect(50, signatureBoxY, 250, 80).stroke();
 
-        // Check if signature is base64 image or text
         if (demande.signature && demande.signature.startsWith('data:image')) {
-            // It's a drawn signature (base64 image)
             try {
                 const base64Data = demande.signature.replace(/^data:image\/png;base64,/, '');
                 const signatureBuffer = Buffer.from(base64Data, 'base64');
                 doc.image(signatureBuffer, 55, signatureBoxY + 5, { width: 240, height: 70, fit: [240, 70] });
             } catch (imgError) {
-                console.error('Erreur image signature:', imgError);
-                // Fallback: show placeholder text
                 doc.fontSize(12).font('Helvetica-Oblique').text('[Signature électronique]', 60, signatureBoxY + 30);
             }
         } else {
-            // It's a text signature (old format)
             doc.fontSize(18).font('Helvetica-Oblique').text(demande.signature || '', 60, signatureBoxY + 25);
         }
-        doc.y = signatureBoxY + 90;
 
-        doc.fontSize(10).font('Helvetica');
-        doc.text(`Signé électroniquement le ${dateCreation}`, 50);
-        doc.text('Le signataire confirme être autorisé(e) à engager l\'entreprise.');
+        // Date à côté de la signature
+        doc.fontSize(10).font('Helvetica').text('Date:', 320, signatureBoxY + 20);
+        doc.text(dateCreation, 320, signatureBoxY + 35);
 
-        // Footer
-        doc.moveDown(3);
+        doc.y = signatureBoxY + 100;
+
+        // Footer page 2
         doc.fontSize(8).fillColor('gray');
-        doc.text('Les Jardins du Saguenay - 418 542-1797 - lesjardinsdusaguenay.com', { align: 'center' });
-        doc.text(`Document généré le ${new Date().toLocaleDateString('fr-CA')}`, { align: 'center' });
+        doc.text('9051-2500 QUÉBEC INC. faisant affaires sous le nom Les Jardins du Saguenay', 50, 730, { align: 'center' });
+        doc.text('2380, rue Cantin, Saguenay, Québec, G7X 8S6 | 418 542-1797', { align: 'center' });
+        doc.text('Page 2 sur 2', { align: 'center' });
 
         doc.end();
 
