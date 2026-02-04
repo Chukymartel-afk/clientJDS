@@ -144,9 +144,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Update summary on step 3
+        // Update summary on step 3 and init signature canvas
         if (step === 3) {
             updateSummary();
+            // Initialize signature canvas after a short delay to ensure it's visible
+            setTimeout(() => {
+                if (window.initSignatureCanvas) {
+                    window.initSignatureCanvas();
+                }
+            }, 100);
         }
 
         // Scroll to top
@@ -830,13 +836,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Signature Canvas
     // =====================================================
 
-    const signatureCanvas = document.getElementById('signatureCanvas');
-    const signatureInput = document.getElementById('signature');
-    const signaturePlaceholder = document.getElementById('signaturePlaceholder');
-    const clearSignatureBtn = document.getElementById('clearSignature');
-    const signatureContainer = document.getElementById('signatureContainer');
+    function initSignatureCanvas() {
+        const signatureCanvas = document.getElementById('signatureCanvas');
+        const signatureInput = document.getElementById('signature');
+        const signaturePlaceholder = document.getElementById('signaturePlaceholder');
+        const clearSignatureBtn = document.getElementById('clearSignature');
+        const signatureContainer = document.getElementById('signatureContainer');
 
-    if (signatureCanvas) {
+        if (!signatureCanvas || signatureCanvas.dataset.initialized === 'true') return;
+
+        signatureCanvas.dataset.initialized = 'true';
+
         const ctx = signatureCanvas.getContext('2d');
         let isDrawing = false;
         let lastX = 0;
@@ -846,28 +856,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // Set canvas size to match container
         function resizeCanvas() {
             const rect = signatureCanvas.getBoundingClientRect();
+            // Skip if canvas is not visible
+            if (rect.width === 0 || rect.height === 0) return;
+
             const dpr = window.devicePixelRatio || 1;
 
-            // Save current drawing
-            const imageData = hasDrawn ? ctx.getImageData(0, 0, signatureCanvas.width, signatureCanvas.height) : null;
-
             signatureCanvas.width = rect.width * dpr;
-            signatureCanvas.height = rect.height * dpr;
+            signatureCanvas.height = 150 * dpr;
 
             ctx.scale(dpr, dpr);
             signatureCanvas.style.width = rect.width + 'px';
-            signatureCanvas.style.height = rect.height + 'px';
+            signatureCanvas.style.height = '150px';
 
             // Setup drawing style
             ctx.strokeStyle = '#1a1a1a';
             ctx.lineWidth = 2.5;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-
-            // Restore drawing if any
-            if (imageData) {
-                ctx.putImageData(imageData, 0, 0);
-            }
         }
 
         // Initial resize
@@ -892,13 +897,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Start drawing
         function startDrawing(e) {
             e.preventDefault();
+            // Resize canvas on first interaction to ensure correct size
+            if (!hasDrawn) {
+                resizeCanvas();
+            }
             isDrawing = true;
             const coords = getCoordinates(e);
             lastX = coords.x;
             lastY = coords.y;
 
             // Hide placeholder on first draw
-            if (!hasDrawn && signaturePlaceholder) {
+            if (signaturePlaceholder) {
                 signaturePlaceholder.style.opacity = '0';
             }
         }
@@ -942,6 +951,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Clear signature
         function clearSignature() {
+            resizeCanvas();
             ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
             signatureInput.value = '';
             hasDrawn = false;
@@ -967,4 +977,10 @@ document.addEventListener('DOMContentLoaded', () => {
             clearSignatureBtn.addEventListener('click', clearSignature);
         }
     }
+
+    // Initialize signature canvas
+    initSignatureCanvas();
+
+    // Also expose function globally so it can be called when step 3 becomes visible
+    window.initSignatureCanvas = initSignatureCanvas;
 });
