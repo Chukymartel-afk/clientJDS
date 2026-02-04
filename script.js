@@ -607,12 +607,14 @@ document.addEventListener('DOMContentLoaded', () => {
     form2.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // Validate signature
+        // Validate signature (now checks for base64 image data)
         const signatureInput = document.getElementById('signature');
-        if (!signatureInput.value.trim()) {
-            signatureInput.classList.add('border-red-500');
-            shakeElement(signatureInput);
-            signatureInput.focus();
+        const signatureContainer = document.getElementById('signatureContainer');
+        if (!signatureInput.value || !signatureInput.value.startsWith('data:image')) {
+            if (signatureContainer) {
+                signatureContainer.classList.add('border-red-500');
+                shakeElement(signatureContainer);
+            }
             return;
         }
 
@@ -823,4 +825,146 @@ document.addEventListener('DOMContentLoaded', () => {
             closeModal(modalTerms);
         }
     });
+
+    // =====================================================
+    // Signature Canvas
+    // =====================================================
+
+    const signatureCanvas = document.getElementById('signatureCanvas');
+    const signatureInput = document.getElementById('signature');
+    const signaturePlaceholder = document.getElementById('signaturePlaceholder');
+    const clearSignatureBtn = document.getElementById('clearSignature');
+    const signatureContainer = document.getElementById('signatureContainer');
+
+    if (signatureCanvas) {
+        const ctx = signatureCanvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let hasDrawn = false;
+
+        // Set canvas size to match container
+        function resizeCanvas() {
+            const rect = signatureCanvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+
+            // Save current drawing
+            const imageData = hasDrawn ? ctx.getImageData(0, 0, signatureCanvas.width, signatureCanvas.height) : null;
+
+            signatureCanvas.width = rect.width * dpr;
+            signatureCanvas.height = rect.height * dpr;
+
+            ctx.scale(dpr, dpr);
+            signatureCanvas.style.width = rect.width + 'px';
+            signatureCanvas.style.height = rect.height + 'px';
+
+            // Setup drawing style
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Restore drawing if any
+            if (imageData) {
+                ctx.putImageData(imageData, 0, 0);
+            }
+        }
+
+        // Initial resize
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Get coordinates from event (mouse or touch)
+        function getCoordinates(e) {
+            const rect = signatureCanvas.getBoundingClientRect();
+            if (e.touches && e.touches.length > 0) {
+                return {
+                    x: e.touches[0].clientX - rect.left,
+                    y: e.touches[0].clientY - rect.top
+                };
+            }
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        // Start drawing
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const coords = getCoordinates(e);
+            lastX = coords.x;
+            lastY = coords.y;
+
+            // Hide placeholder on first draw
+            if (!hasDrawn && signaturePlaceholder) {
+                signaturePlaceholder.style.opacity = '0';
+            }
+        }
+
+        // Draw
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+
+            const coords = getCoordinates(e);
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(coords.x, coords.y);
+            ctx.stroke();
+
+            lastX = coords.x;
+            lastY = coords.y;
+            hasDrawn = true;
+        }
+
+        // Stop drawing
+        function stopDrawing(e) {
+            if (isDrawing) {
+                isDrawing = false;
+                // Save signature as base64
+                saveSignature();
+            }
+        }
+
+        // Save signature to hidden input
+        function saveSignature() {
+            if (hasDrawn) {
+                const dataURL = signatureCanvas.toDataURL('image/png');
+                signatureInput.value = dataURL;
+                signatureContainer.classList.remove('border-red-500');
+                signatureContainer.classList.add('border-green-500');
+                setTimeout(() => signatureContainer.classList.remove('border-green-500'), 1500);
+            }
+        }
+
+        // Clear signature
+        function clearSignature() {
+            ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+            signatureInput.value = '';
+            hasDrawn = false;
+            if (signaturePlaceholder) {
+                signaturePlaceholder.style.opacity = '1';
+            }
+        }
+
+        // Mouse events
+        signatureCanvas.addEventListener('mousedown', startDrawing);
+        signatureCanvas.addEventListener('mousemove', draw);
+        signatureCanvas.addEventListener('mouseup', stopDrawing);
+        signatureCanvas.addEventListener('mouseout', stopDrawing);
+
+        // Touch events (mobile)
+        signatureCanvas.addEventListener('touchstart', startDrawing, { passive: false });
+        signatureCanvas.addEventListener('touchmove', draw, { passive: false });
+        signatureCanvas.addEventListener('touchend', stopDrawing);
+        signatureCanvas.addEventListener('touchcancel', stopDrawing);
+
+        // Clear button
+        if (clearSignatureBtn) {
+            clearSignatureBtn.addEventListener('click', clearSignature);
+        }
+    }
 });

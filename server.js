@@ -796,7 +796,7 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
         doc.fontSize(9);
         doc.text('En signant ce formulaire, le client accepte les conditions suivantes:', { align: 'left' });
         doc.moveDown(0.5);
-        doc.text('1. Les termes de paiement sont Net 30 jours à compter de la date de facturation.');
+        doc.text('1. Les termes de paiement sont Net 14 jours à compter de la date de facturation.');
         doc.text('2. Tout compte en souffrance sera sujet à des frais d\'intérêt de 2% par mois.');
         doc.text('3. Les Jardins du Saguenay se réserve le droit de modifier les prix sans préavis.');
         doc.text('4. Les commandes minimales peuvent s\'appliquer selon le secteur d\'activité.');
@@ -811,9 +811,25 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
 
         // Signature box
         const signatureBoxY = doc.y;
-        doc.rect(50, signatureBoxY, 250, 50).stroke();
-        doc.fontSize(18).font('Helvetica-Oblique').text(demande.signature, 60, signatureBoxY + 15);
-        doc.y = signatureBoxY + 60;
+        doc.rect(50, signatureBoxY, 250, 80).stroke();
+
+        // Check if signature is base64 image or text
+        if (demande.signature && demande.signature.startsWith('data:image')) {
+            // It's a drawn signature (base64 image)
+            try {
+                const base64Data = demande.signature.replace(/^data:image\/png;base64,/, '');
+                const signatureBuffer = Buffer.from(base64Data, 'base64');
+                doc.image(signatureBuffer, 55, signatureBoxY + 5, { width: 240, height: 70, fit: [240, 70] });
+            } catch (imgError) {
+                console.error('Erreur image signature:', imgError);
+                // Fallback: show placeholder text
+                doc.fontSize(12).font('Helvetica-Oblique').text('[Signature électronique]', 60, signatureBoxY + 30);
+            }
+        } else {
+            // It's a text signature (old format)
+            doc.fontSize(18).font('Helvetica-Oblique').text(demande.signature || '', 60, signatureBoxY + 25);
+        }
+        doc.y = signatureBoxY + 90;
 
         doc.fontSize(10).font('Helvetica');
         doc.text(`Signé électroniquement le ${dateCreation}`, 50);
