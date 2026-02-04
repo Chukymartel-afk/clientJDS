@@ -830,25 +830,56 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
         // =====================================================
         doc.addPage();
 
+        const hasPromo = demande.promo_accepted === 'yes';
+        const minOrderAmount = demande.promo_min_order || '$0';
+
         // Header page 2
         doc.fontSize(20).font('Helvetica-Bold').fillColor('#FF7A00').text('Les Jardins du Saguenay', { align: 'center' });
         doc.moveDown(0.3);
-        doc.fontSize(16).font('Helvetica-Bold').fillColor('#333').text('CONDITIONS GÉNÉRALES D\'APPROVISIONNEMENT', { align: 'center' });
+
+        if (hasPromo) {
+            doc.fontSize(14).font('Helvetica-Bold').fillColor('#333').text('CONDITIONS GÉNÉRALES D\'APPROVISIONNEMENT', { align: 'center' });
+            doc.fontSize(12).fillColor('#22c55e').text('PROGRAMME ACHAT MINIMUM AVEC RISTOURNE 2%', { align: 'center' });
+        } else {
+            doc.fontSize(16).font('Helvetica-Bold').fillColor('#333').text('CONDITIONS GÉNÉRALES D\'APPROVISIONNEMENT', { align: 'center' });
+        }
         doc.moveDown(0.5);
 
         // Client info box
-        doc.roundedRect(50, doc.y, 500, 50, 5).fillAndStroke('#f5f5f5', '#ddd');
+        doc.roundedRect(50, doc.y, 500, hasPromo ? 65 : 50, 5).fillAndStroke('#f5f5f5', '#ddd');
         doc.fillColor('black').fontSize(10);
-        doc.text(`Client: ${demande.company_name}`, 60, doc.y - 40);
-        doc.text(`Dossier #${demande.id} - ${dateCreation}`, 60, doc.y - 25);
-        doc.y += 20;
+        doc.text(`Client: ${demande.company_name}`, 60, doc.y - (hasPromo ? 55 : 40));
+        doc.text(`Dossier #${demande.id} - ${dateCreation}`, 60, doc.y - (hasPromo ? 40 : 25));
+        if (hasPromo) {
+            doc.font('Helvetica-Bold').fillColor('#FF7A00').text(`Engagement d'achat minimum: ${minOrderAmount}/an - Ristourne: 2%`, 60, doc.y - 25);
+        }
+        doc.y += hasPromo ? 30 : 20;
         doc.moveDown(1);
 
         // Conditions générales complètes
         doc.fillColor('black').font('Helvetica');
         doc.fontSize(9);
 
-        doc.font('Helvetica-Bold').text('1. COMMANDES', { underline: false });
+        // Si programme promo accepté, ajouter les clauses spécifiques EN PREMIER
+        if (hasPromo) {
+            doc.font('Helvetica-Bold').fillColor('#FF7A00').text('ENGAGEMENT D\'ACHAT MINIMUM', { underline: false });
+            doc.fillColor('black').font('Helvetica');
+            doc.text(`• Vous vous engagez à acheter un volume minimal annuel de ${minOrderAmount} de Produits.`);
+            doc.text('• En contrepartie, vous bénéficiez d\'une ristourne de 2% sur tous vos achats pendant 12 mois.');
+            doc.text('• Cet engagement débute à la date de création de votre compte pour une période de 12 mois.');
+            doc.moveDown(0.5);
+
+            doc.font('Helvetica-Bold').fillColor('#c00').text('PÉNALITÉ SI VOLUME NON ATTEINT');
+            doc.fillColor('black').font('Helvetica');
+            doc.text(`• Si vous n'atteignez pas le volume minimal de ${minOrderAmount} à la fin des 12 mois,`);
+            doc.text('  vous devrez payer une pénalité de 15% du volume minimal non atteint.');
+            doc.text('• Cette pénalité sera calculée à la fin de la période et payable dans les 30 jours.');
+            doc.text('• Exemple: Si vous achetez 30 000$ sur un engagement de 40 000$, la pénalité sera de');
+            doc.text('  15% x 10 000$ = 1 500$.');
+            doc.moveDown(0.5);
+        }
+
+        doc.font('Helvetica-Bold').fillColor('black').text('1. COMMANDES', { underline: false });
         doc.font('Helvetica').text('• Vous commandez les Produits par bon de commande électronique sur notre plateforme.');
         doc.text('• Nous confirmons votre commande par courriel dans les 1 heures ouvrables.');
         doc.text('• Tous les prix sont selon notre liste de prix en vigueur (taxes en sus).');
@@ -856,7 +887,11 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
 
         doc.font('Helvetica-Bold').text('2. MODIFICATION ET ANNULATION');
         doc.font('Helvetica').text('• Vous pouvez modifier ou annuler votre commande jusqu\'à 24 heures avant la livraison.');
-        doc.text('• Annulation tardive ou refus de livraison: frais de désengagement de 50$.');
+        if (hasPromo) {
+            doc.text('• Annulation tardive ou refus de livraison: frais de désengagement de 10% du montant.');
+        } else {
+            doc.text('• Annulation tardive ou refus de livraison: frais de désengagement de 50$.');
+        }
         doc.moveDown(0.5);
 
         doc.font('Helvetica-Bold').text('3. LIVRAISON');
@@ -874,6 +909,9 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
         doc.font('Helvetica').text('• Le paiement est dû dans les 14 jours suivant la réception de la facture.');
         doc.text('• En cas de retard: intérêts au taux préférentiel bancaire plus 15% par année.');
         doc.text('• Solde impayé depuis plus de 30 jours: paiement à la livraison exigé.');
+        if (hasPromo) {
+            doc.text('• En cas de non-paiement, la ristourne de 2% sera annulée rétroactivement.');
+        }
         doc.moveDown(0.5);
 
         doc.font('Helvetica-Bold').text('6. CONFIDENTIALITÉ');
@@ -881,20 +919,34 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
         doc.moveDown(0.5);
 
         doc.font('Helvetica-Bold').text('7. RÉSILIATION');
-        doc.font('Helvetica').text('• Nous pouvons résilier votre compte sans avis en cas de non-paiement, manquement aux conditions, insolvabilité ou acte criminel.');
+        doc.font('Helvetica').text('• Nous pouvons résilier votre compte sans avis en cas de non-paiement, manquement aux');
+        doc.text('  conditions, insolvabilité ou acte criminel.');
+        if (hasPromo) {
+            doc.text('• En cas de résiliation, toutes les sommes dues (incluant les pénalités) deviennent');
+            doc.text('  immédiatement exigibles.');
+        }
         doc.moveDown(0.5);
 
         doc.font('Helvetica-Bold').text('8. JURIDICTION');
-        doc.font('Helvetica').text('• Ce contrat est régi par les lois du Québec. Les tribunaux du district de Chicoutimi ont compétence exclusive.');
-        doc.moveDown(1.5);
+        doc.font('Helvetica').text('• Ce contrat est régi par les lois du Québec. Les tribunaux du district de Chicoutimi');
+        doc.text('  ont compétence exclusive pour tout litige.');
+        doc.moveDown(1);
 
         // Section signature finale
         doc.fontSize(11).font('Helvetica-Bold').fillColor('#333').text('SIGNATURE DU CLIENT');
         doc.moveDown(0.5);
 
         doc.fontSize(9).font('Helvetica').fillColor('black');
-        doc.text('En signant ce document, je confirme avoir lu et accepté l\'intégralité des conditions générales ci-dessus.');
-        doc.text('Je confirme être autorisé(e) à engager l\'entreprise.');
+        if (hasPromo) {
+            doc.text('En signant ce document, je confirme:');
+            doc.text(`• Avoir lu et accepté l'intégralité des conditions générales ci-dessus.`);
+            doc.text(`• M'engager à acheter le volume minimal annuel de ${minOrderAmount}.`);
+            doc.text('• Accepter de payer la pénalité de 15% si je n\'atteins pas le volume minimal.');
+            doc.text('• Être autorisé(e) à engager l\'entreprise.');
+        } else {
+            doc.text('En signant ce document, je confirme avoir lu et accepté l\'intégralité des conditions');
+            doc.text('générales ci-dessus. Je confirme être autorisé(e) à engager l\'entreprise.');
+        }
         doc.moveDown(1);
 
         // Signature box
