@@ -714,7 +714,7 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
         }
 
         const demande = result.rows[0];
-        const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
+        const doc = new PDFDocument({ margin: 50, size: 'LETTER', bufferPages: true });
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=demande-${demande.id}-${demande.company_name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
@@ -724,7 +724,6 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
         const dateCreation = new Date(demande.created_at).toLocaleDateString('fr-CA', {
             year: 'numeric', month: 'long', day: 'numeric'
         });
-
         const sectorLabels = {
             'restaurant': 'Restaurant',
             'hotellerie': 'Hôtellerie',
@@ -736,298 +735,323 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
 
         const hasPromo = demande.promo_accepted === 'yes';
         const minOrderAmount = demande.promo_min_order || '$0';
-        const pageWidth = 612;
-        const marginLeft = 50;
-        const marginRight = 50;
-        const contentWidth = pageWidth - marginLeft - marginRight;
+        const W = 612;        // page width
+        const M = 50;         // margin
+        const CW = W - M * 2; // content width (512)
 
-        // Helper: draw a section header bar
-        function drawSectionHeader(text, y) {
-            doc.save();
-            doc.roundedRect(marginLeft, y, contentWidth, 24, 3).fill('#FF7A00');
-            doc.fontSize(10).font('Helvetica-Bold').fillColor('white').text(text, marginLeft + 10, y + 7, { width: contentWidth - 20 });
-            doc.restore();
-            doc.fillColor('#333');
-            return y + 32;
+        // ---- Helpers (all use absolute y, never touch doc.y for flow) ----
+
+        // Measure text height at given font settings
+        function textH(str, opts) {
+            return doc.heightOfString(str, opts);
         }
 
-        // Helper: draw a field row (label: value)
-        function drawField(label, value, x, y, labelWidth) {
-            labelWidth = labelWidth || 160;
-            doc.fontSize(10).font('Helvetica').fillColor('#666').text(label, x, y, { width: labelWidth });
-            doc.font('Helvetica-Bold').fillColor('#333').text(value || '—', x + labelWidth, y, { width: contentWidth - labelWidth - (x - marginLeft) });
-            return y + 18;
+        // Draw text at absolute position, return y after text
+        function drawText(str, x, atY, opts) {
+            opts = Object.assign({ lineBreak: true }, opts);
+            doc.text(str, x, atY, opts);
+            return atY + textH(str, opts);
+        }
+
+        // Draw signature image or text into a box area
+        function drawSignature(x, atY, w, h) {
+            if (demande.signature && demande.signature.startsWith('data:image')) {
+                try {
+                    const b64 = demande.signature.replace(/^data:image\/png;base64,/, '');
+                    const buf = Buffer.from(b64, 'base64');
+                    doc.image(buf, x + 8, atY + 4, { fit: [w - 16, h - 12] });
+                } catch (e) {
+                    doc.fontSize(9).font('Helvetica-Oblique').fillColor('#aaa')
+                        .text('[Signature]', x + w / 2 - 25, atY + h / 2 - 5, { lineBreak: false });
+                }
+            } else if (demande.signature) {
+                doc.fontSize(15).font('Helvetica-Oblique').fillColor('#333')
+                    .text(demande.signature, x + 10, atY + h / 2 - 8, { lineBreak: false });
+            }
         }
 
         // =====================================================
-        // PAGE 1: FICHE CLIENT
+        // PAGE 1 — FICHE CLIENT
         // =====================================================
 
-        // Top orange accent bar
-        doc.rect(0, 0, pageWidth, 6).fill('#FF7A00');
+        // Orange top stripe
+        doc.rect(0, 0, W, 5).fill('#FF7A00');
 
-        // Company header
-        doc.fontSize(22).font('Helvetica-Bold').fillColor('#FF7A00').text('Les Jardins du Saguenay', marginLeft, 30, { align: 'center', width: contentWidth });
-        doc.fontSize(9).font('Helvetica').fillColor('#999').text('Distributeur alimentaire depuis plus de 40 ans', marginLeft, 56, { align: 'center', width: contentWidth });
+        // Header
+        doc.fontSize(20).font('Helvetica-Bold').fillColor('#FF7A00')
+            .text('Les Jardins du Saguenay', M, 22, { width: CW, align: 'center', lineBreak: false });
+        doc.fontSize(8).font('Helvetica').fillColor('#aaa')
+            .text('Distributeur alimentaire depuis plus de 40 ans', M, 46, { width: CW, align: 'center', lineBreak: false });
 
-        // Thin separator
-        doc.moveTo(marginLeft + 150, 74).lineTo(pageWidth - marginRight - 150, 74).lineWidth(0.5).stroke('#ddd');
-
-        // Document title + meta info
-        doc.fontSize(16).font('Helvetica-Bold').fillColor('#333').text('FICHE CLIENT', marginLeft, 86, { width: contentWidth });
-        doc.fontSize(9).font('Helvetica').fillColor('#999');
-        doc.text(`Dossier #${demande.id}`, marginLeft, 88, { width: contentWidth, align: 'right' });
-        doc.text(dateCreation, marginLeft, 100, { width: contentWidth, align: 'right' });
+        // Title bar
+        doc.rect(M, 62, CW, 28).fill('#FF7A00');
+        doc.fontSize(13).font('Helvetica-Bold').fillColor('white')
+            .text('FICHE CLIENT', M + 12, 68, { lineBreak: false });
+        doc.fontSize(9).font('Helvetica').fillColor('white')
+            .text(`Dossier #${demande.id}  |  ${dateCreation}`, M, 70, { width: CW - 12, align: 'right', lineBreak: false });
 
         // Status badge
-        const statusText = demande.status === 'approuvee' ? 'Approuvé' : demande.status === 'refusee' ? 'Refusé' : 'En attente';
-        const statusColor = demande.status === 'approuvee' ? '#22c55e' : demande.status === 'refusee' ? '#ef4444' : '#f59e0b';
-        const statusWidth = doc.widthOfString(statusText) + 16;
-        const statusX = pageWidth - marginRight - statusWidth;
-        doc.roundedRect(statusX, 112, statusWidth, 18, 9).fill(statusColor);
-        doc.fontSize(8).font('Helvetica-Bold').fillColor('white').text(statusText, statusX, 116, { width: statusWidth, align: 'center' });
+        const statusText = demande.status === 'approuvee' ? 'APPROUVÉ' : demande.status === 'refusee' ? 'REFUSÉ' : 'EN ATTENTE';
+        const statusColor = demande.status === 'approuvee' ? '#16a34a' : demande.status === 'refusee' ? '#dc2626' : '#d97706';
 
-        // Horizontal line under header
-        doc.moveTo(marginLeft, 140).lineTo(pageWidth - marginRight, 140).lineWidth(1).stroke('#eee');
+        let y = 102;
 
-        // SECTION: Entreprise
-        let y = drawSectionHeader('INFORMATIONS DE L\'ENTREPRISE', 152);
-        y = drawField('Nom de l\'entreprise', demande.company_name, marginLeft, y);
-        y = drawField('Propriétaire', demande.owner_name, marginLeft, y);
+        // --- Section: Entreprise ---
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#FF7A00')
+            .text('ENTREPRISE', M, y, { lineBreak: false });
+        doc.moveTo(M, y + 14).lineTo(M + CW, y + 14).lineWidth(0.5).stroke('#e5e5e5');
+        y += 22;
+
+        const labelW = 155;
+        const valX = M + labelW;
+        const valW = CW - labelW;
+        const rowH = 17;
+
+        function fieldRow(label, value, atY) {
+            doc.fontSize(9).font('Helvetica').fillColor('#888')
+                .text(label, M, atY, { width: labelW, lineBreak: false });
+            doc.fontSize(9.5).font('Helvetica-Bold').fillColor('#333')
+                .text(value || '—', valX, atY, { width: valW, lineBreak: false });
+            return atY + rowH;
+        }
+
+        y = fieldRow('Nom de l\'entreprise', demande.company_name, y);
+        y = fieldRow('Propriétaire', demande.owner_name, y);
         if (demande.contact_name && demande.contact_name !== demande.owner_name) {
-            y = drawField('Personne contact', demande.contact_name, marginLeft, y);
+            y = fieldRow('Personne contact', demande.contact_name, y);
         }
-        y = drawField('Adresse', `${demande.address}, ${demande.city}, ${demande.postal_code}`, marginLeft, y);
-        y += 12;
+        y = fieldRow('Adresse', demande.address, y);
+        y = fieldRow('Ville', `${demande.city}, ${demande.postal_code}`, y);
+        y += 10;
 
-        // SECTION: Activité
-        y = drawSectionHeader('ACTIVITÉ', y);
-        y = drawField('Secteur d\'activité', sectorLabels[demande.sector] || demande.sector, marginLeft, y);
-        y = drawField('Volume d\'achat annuel estimé', `${demande.annual_purchase}`, marginLeft, y);
+        // --- Section: Activité ---
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#FF7A00')
+            .text('ACTIVITÉ', M, y, { lineBreak: false });
+        doc.moveTo(M, y + 14).lineTo(M + CW, y + 14).lineWidth(0.5).stroke('#e5e5e5');
+        y += 22;
+
+        y = fieldRow('Secteur d\'activité', sectorLabels[demande.sector] || demande.sector, y);
+        y = fieldRow('Volume d\'achat annuel', `${demande.annual_purchase}`, y);
+
         if (hasPromo) {
-            doc.fontSize(10).font('Helvetica').fillColor('#666').text('Programme ristourne 2%', marginLeft, y, { width: 160 });
-            doc.font('Helvetica-Bold').fillColor('#22c55e').text(`Accepté (min. ${minOrderAmount}/an)`, marginLeft + 160, y);
-            doc.fillColor('#333');
-            y += 18;
+            doc.fontSize(9).font('Helvetica').fillColor('#888')
+                .text('Programme ristourne', M, y, { width: labelW, lineBreak: false });
+            doc.fontSize(9.5).font('Helvetica-Bold').fillColor('#16a34a')
+                .text(`Accepté — 2% sur min. ${minOrderAmount}/an`, valX, y, { width: valW, lineBreak: false });
+            y += rowH;
+        } else {
+            y = fieldRow('Programme ristourne', 'Non souscrit', y);
         }
-        y += 12;
+        y += 10;
 
-        // SECTION: Coordonnées
-        y = drawSectionHeader('COORDONNÉES', y);
-        y = drawField('Courriel responsable', demande.email_responsable, marginLeft, y);
-        y = drawField('Courriel facturation', demande.email_facturation, marginLeft, y);
-        y = drawField('Téléphone', demande.phone, marginLeft, y);
-        y += 12;
+        // --- Section: Coordonnées ---
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#FF7A00')
+            .text('COORDONNÉES', M, y, { lineBreak: false });
+        doc.moveTo(M, y + 14).lineTo(M + CW, y + 14).lineWidth(0.5).stroke('#e5e5e5');
+        y += 22;
 
-        // SECTION: Signature
-        y = drawSectionHeader('SIGNATURE', y);
+        y = fieldRow('Courriel responsable', demande.email_responsable, y);
+        y = fieldRow('Courriel facturation', demande.email_facturation, y);
+        y = fieldRow('Téléphone', demande.phone, y);
+        y += 10;
+
+        // --- Section: Signature ---
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#FF7A00')
+            .text('SIGNATURE ÉLECTRONIQUE', M, y, { lineBreak: false });
+
+        // Status badge (right-aligned next to signature title)
+        const badgeW = doc.widthOfString(statusText) + 14;
+        doc.roundedRect(M + CW - badgeW, y - 2, badgeW, 16, 8).fill(statusColor);
+        doc.fontSize(7).font('Helvetica-Bold').fillColor('white')
+            .text(statusText, M + CW - badgeW, y + 1, { width: badgeW, align: 'center', lineBreak: false });
+
+        doc.moveTo(M, y + 14).lineTo(M + CW, y + 14).lineWidth(0.5).stroke('#e5e5e5');
+        y += 22;
 
         // Signature box
-        doc.roundedRect(marginLeft, y, 220, 70, 3).lineWidth(1).stroke('#ddd');
+        const sigW = 200;
+        const sigH = 60;
+        doc.rect(M, y, sigW, sigH).lineWidth(0.5).stroke('#ddd');
+        drawSignature(M, y, sigW, sigH);
 
-        if (demande.signature && demande.signature.startsWith('data:image')) {
-            try {
-                const base64Data = demande.signature.replace(/^data:image\/png;base64,/, '');
-                const signatureBuffer = Buffer.from(base64Data, 'base64');
-                doc.image(signatureBuffer, marginLeft + 10, y + 5, { fit: [200, 60] });
-            } catch (imgError) {
-                doc.fontSize(10).font('Helvetica-Oblique').fillColor('#999').text('[Signature]', marginLeft + 70, y + 28);
-            }
-        } else {
-            doc.fontSize(16).font('Helvetica-Oblique').fillColor('#333').text(demande.signature || '', marginLeft + 15, y + 22);
-        }
-
-        // Date beside signature
-        doc.fontSize(9).font('Helvetica').fillColor('#666').text('Signé électroniquement le', marginLeft + 240, y + 20);
-        doc.fontSize(10).font('Helvetica-Bold').fillColor('#333').text(dateCreation, marginLeft + 240, y + 34);
+        // Date + info next to sig
+        doc.fontSize(8).font('Helvetica').fillColor('#888')
+            .text('Date de signature', M + sigW + 20, y + 4, { lineBreak: false });
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#333')
+            .text(dateCreation, M + sigW + 20, y + 16, { lineBreak: false });
+        doc.fontSize(8).font('Helvetica').fillColor('#888')
+            .text('Signataire', M + sigW + 20, y + 34, { lineBreak: false });
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#333')
+            .text(demande.owner_name, M + sigW + 20, y + 46, { lineBreak: false });
 
         // Footer page 1
-        doc.fontSize(7).font('Helvetica').fillColor('#bbb');
-        doc.text('Les Jardins du Saguenay | 418 542-1797 | lesjardinsdusaguenay.com', marginLeft, 740, { width: contentWidth, align: 'center' });
-        doc.text('Page 1 sur 2', marginLeft, 752, { width: contentWidth, align: 'center' });
+        doc.fontSize(7).font('Helvetica').fillColor('#ccc')
+            .text('Les Jardins du Saguenay  •  418 542-1797  •  lesjardinsdusaguenay.com', M, 740, { width: CW, align: 'center', lineBreak: false });
+        doc.text('Page 1 de 2', M, 752, { width: CW, align: 'center', lineBreak: false });
 
         // =====================================================
-        // PAGE 2: CONDITIONS GÉNÉRALES
+        // PAGE 2 — CONDITIONS GÉNÉRALES D'APPROVISIONNEMENT
         // =====================================================
         doc.addPage();
 
-        // Top accent bar
-        doc.rect(0, 0, pageWidth, 6).fill('#FF7A00');
+        // Orange top stripe
+        doc.rect(0, 0, W, 5).fill('#FF7A00');
 
         // Header
-        doc.fontSize(18).font('Helvetica-Bold').fillColor('#FF7A00').text('Les Jardins du Saguenay', marginLeft, 24, { width: contentWidth, align: 'center' });
-        doc.moveDown(0.3);
+        doc.fontSize(16).font('Helvetica-Bold').fillColor('#FF7A00')
+            .text('Les Jardins du Saguenay', M, 18, { width: CW, align: 'center', lineBreak: false });
 
-        doc.fontSize(13).font('Helvetica-Bold').fillColor('#333').text('CONDITIONS GÉNÉRALES D\'APPROVISIONNEMENT', marginLeft, 48, { width: contentWidth, align: 'center' });
+        // Title bar
+        doc.rect(M, 40, CW, 22).fill('#333');
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('white')
+            .text('CONDITIONS GÉNÉRALES D\'APPROVISIONNEMENT', M, 46, { width: CW, align: 'center', lineBreak: false });
 
-        // Client info bar
-        let infoBarY = 72;
-        const infoBarHeight = hasPromo ? 48 : 32;
-        doc.roundedRect(marginLeft, infoBarY, contentWidth, infoBarHeight, 4).fill('#f8f8f8');
-        doc.roundedRect(marginLeft, infoBarY, contentWidth, infoBarHeight, 4).lineWidth(0.5).stroke('#e0e0e0');
+        // Client info line
+        doc.fontSize(8).font('Helvetica').fillColor('#666');
+        let infoLine = `Client: ${demande.company_name}  |  Dossier #${demande.id}  |  ${dateCreation}`;
+        if (hasPromo) infoLine += `  |  Engagement: ${minOrderAmount}/an — Ristourne 2%`;
+        doc.text(infoLine, M, 68, { width: CW, align: 'center', lineBreak: false });
 
-        doc.fontSize(9).font('Helvetica-Bold').fillColor('#333');
-        doc.text(`Client: ${demande.company_name}`, marginLeft + 12, infoBarY + 8);
-        doc.font('Helvetica').fillColor('#666');
-        doc.text(`Dossier #${demande.id} — ${dateCreation}`, marginLeft + 12, infoBarY + 8, { width: contentWidth - 24, align: 'right' });
+        y = 84;
 
+        // Contract text settings
+        const fs = 8;   // body font size
+        const hs = 9;   // heading font size
+        const sp = 3;    // spacing after bullet
+        const secSp = 7; // spacing after section
+
+        function heading(num, title, color) {
+            doc.fontSize(hs).font('Helvetica-Bold').fillColor(color || '#333')
+                .text(`${num ? num + '. ' : ''}${title}`, M, y, { width: CW, lineBreak: false });
+            y += 13;
+        }
+
+        function bul(text) {
+            doc.fontSize(fs).font('Helvetica').fillColor('#444');
+            const h = textH('• ' + text, { width: CW - 12 });
+            doc.text('• ' + text, M + 12, y, { width: CW - 12 });
+            y += h + sp;
+        }
+
+        // === PROMO CLAUSES ===
         if (hasPromo) {
-            doc.fontSize(9).font('Helvetica-Bold').fillColor('#FF7A00');
-            doc.text(`Engagement d'achat minimum: ${minOrderAmount}/an — Ristourne: 2%`, marginLeft + 12, infoBarY + 26);
-        }
+            // Orange left border for engagement
+            const engY = y;
+            heading('', 'ENGAGEMENT D\'ACHAT MINIMUM', '#FF7A00');
+            bul(`Vous vous engagez à acheter un volume minimal annuel de ${minOrderAmount} de Produits.`);
+            bul('En contrepartie, vous bénéficiez d\'une ristourne de 2% sur tous vos achats pendant 12 mois.');
+            bul('Cet engagement débute à la date de création de votre compte pour une période de 12 mois.');
+            doc.rect(M, engY, 3, y - engY - sp).fill('#FF7A00');
+            y += 4;
 
-        y = infoBarY + infoBarHeight + 14;
+            // Red left border for penalty
+            const penY = y;
+            heading('', 'PÉNALITÉ SI VOLUME NON ATTEINT', '#dc2626');
+            bul(`Si vous n'atteignez pas le volume minimal de ${minOrderAmount} à la fin des 12 mois, vous devrez payer une pénalité de 15% du volume minimal non atteint.`);
+            bul('Cette pénalité sera calculée à la fin de la période et payable dans les 30 jours.');
+            bul(`Exemple: achat de 30 000$ sur engagement de 40 000$ = pénalité de 15% × 10 000$ = 1 500$.`);
+            doc.rect(M, penY, 3, y - penY - sp).fill('#dc2626');
+            y += 4;
 
-        // Contract body font size
-        const bodySize = 8.5;
-        const headingSize = 9.5;
-        const lineHeight = 13;
-
-        // Helper: contract section heading
-        function contractHeading(num, title, color) {
-            doc.fontSize(headingSize).font('Helvetica-Bold').fillColor(color || '#333').text(`${num}${num ? '. ' : ''}${title}`, marginLeft, y);
-            y = doc.y + 3;
-        }
-
-        // Helper: contract bullet
-        function bullet(text) {
-            doc.fontSize(bodySize).font('Helvetica').fillColor('#444');
-            doc.text(`  •  ${text}`, marginLeft, y, { width: contentWidth, lineGap: 1 });
-            y = doc.y + 2;
-        }
-
-        // Promo-specific clauses
-        if (hasPromo) {
-            // Engagement box
-            doc.roundedRect(marginLeft, y, contentWidth, 0.1, 0).fill('white'); // dummy to not affect y
-            const engStartY = y;
-            doc.save();
-            doc.roundedRect(marginLeft, engStartY - 2, 4, 52, 2).fill('#FF7A00');
-            doc.restore();
-
-            contractHeading('', 'ENGAGEMENT D\'ACHAT MINIMUM', '#FF7A00');
-            bullet(`Vous vous engagez à acheter un volume minimal annuel de ${minOrderAmount} de Produits.`);
-            bullet('En contrepartie, vous bénéficiez d\'une ristourne de 2% sur tous vos achats pendant 12 mois.');
-            bullet('Cet engagement débute à la date de création de votre compte pour une période de 12 mois.');
+            // Thin separator
+            doc.moveTo(M, y).lineTo(M + CW, y).lineWidth(0.3).stroke('#ddd');
             y += 6;
-
-            // Penalty box
-            const penStartY = y;
-            doc.save();
-            doc.roundedRect(marginLeft, penStartY - 2, 4, 68, 2).fill('#dc2626');
-            doc.restore();
-
-            contractHeading('', 'PÉNALITÉ SI VOLUME NON ATTEINT', '#dc2626');
-            bullet(`Si vous n'atteignez pas le volume minimal de ${minOrderAmount} à la fin des 12 mois, vous devrez payer une pénalité de 15% du volume minimal non atteint.`);
-            bullet('Cette pénalité sera calculée à la fin de la période et payable dans les 30 jours.');
-            bullet(`Exemple: Si vous achetez 30 000$ sur un engagement de 40 000$, la pénalité sera de 15% x 10 000$ = 1 500$.`);
-            y += 8;
         }
 
-        // Standard conditions
-        contractHeading('1', 'COMMANDES');
-        bullet('Vous commandez les Produits par bon de commande électronique sur notre plateforme.');
-        bullet('Nous confirmons votre commande par courriel dans les 1 heures ouvrables.');
-        bullet('Tous les prix sont selon notre liste de prix en vigueur (taxes en sus).');
-        y += 5;
+        // === STANDARD CONDITIONS ===
+        heading('1', 'COMMANDES');
+        bul('Vous commandez les Produits par bon de commande électronique sur notre plateforme.');
+        bul('Nous confirmons votre commande par courriel dans l\'heure ouvrable suivante.');
+        bul('Tous les prix sont selon notre liste de prix en vigueur (taxes en sus).');
+        y += secSp;
 
-        contractHeading('2', 'MODIFICATION ET ANNULATION');
-        bullet('Vous pouvez modifier ou annuler votre commande jusqu\'à 24 heures avant la livraison.');
-        bullet(hasPromo
+        heading('2', 'MODIFICATION ET ANNULATION');
+        bul('Vous pouvez modifier ou annuler votre commande jusqu\'à 24 heures avant la livraison.');
+        bul(hasPromo
             ? 'Annulation tardive ou refus de livraison: frais de désengagement de 10% du montant.'
             : 'Annulation tardive ou refus de livraison: frais de désengagement de 50$.');
-        y += 5;
+        y += secSp;
 
-        contractHeading('3', 'LIVRAISON');
-        bullet('Nous livrons les Produits à l\'adresse indiquée sur votre commande.');
-        bullet('Les frais de livraison sont facturés en sus selon notre grille tarifaire.');
-        bullet('Vous devenez propriétaire et responsable des Produits dès leur livraison.');
-        y += 5;
+        heading('3', 'LIVRAISON');
+        bul('Nous livrons les Produits à l\'adresse indiquée sur votre commande.');
+        bul('Les frais de livraison sont facturés en sus selon notre grille tarifaire.');
+        bul('Vous devenez propriétaire et responsable des Produits dès leur livraison.');
+        y += secSp;
 
-        contractHeading('4', 'QUALITÉ');
-        bullet('Les Produits sont emballés selon les règles de l\'art.');
-        bullet('Nous garantissons que les Produits sont aptes à la consommation à la date de livraison.');
-        y += 5;
+        heading('4', 'QUALITÉ');
+        bul('Les Produits sont emballés selon les règles de l\'art.');
+        bul('Nous garantissons que les Produits sont aptes à la consommation à la date de livraison.');
+        y += secSp;
 
-        contractHeading('5', 'PAIEMENT');
-        bullet('Le paiement est dû dans les 14 jours suivant la réception de la facture.');
-        bullet('En cas de retard: intérêts au taux préférentiel bancaire plus 15% par année.');
-        bullet('Solde impayé depuis plus de 30 jours: paiement à la livraison exigé.');
+        heading('5', 'PAIEMENT');
+        bul('Le paiement est dû dans les 14 jours suivant la réception de la facture.');
+        bul('En cas de retard: intérêts au taux préférentiel bancaire plus 15% par année.');
+        bul('Solde impayé depuis plus de 30 jours: paiement à la livraison exigé.');
         if (hasPromo) {
-            bullet('En cas de non-paiement, la ristourne de 2% sera annulée rétroactivement.');
+            bul('En cas de non-paiement, la ristourne de 2% sera annulée rétroactivement.');
         }
-        y += 5;
+        y += secSp;
 
-        contractHeading('6', 'CONFIDENTIALITÉ');
-        bullet('Toutes les informations relatives à nos prix et opérations sont confidentielles.');
-        y += 5;
+        heading('6', 'CONFIDENTIALITÉ');
+        bul('Toutes les informations relatives à nos prix et opérations sont confidentielles.');
+        y += secSp;
 
-        contractHeading('7', 'RÉSILIATION');
-        bullet('Nous pouvons résilier votre compte sans avis en cas de non-paiement, manquement aux conditions, insolvabilité ou acte criminel.');
+        heading('7', 'RÉSILIATION');
+        bul('Nous pouvons résilier votre compte sans avis en cas de non-paiement, manquement aux conditions, insolvabilité ou acte criminel.');
         if (hasPromo) {
-            bullet('En cas de résiliation, toutes les sommes dues (incluant les pénalités) deviennent immédiatement exigibles.');
+            bul('En cas de résiliation, toutes les sommes dues (incluant les pénalités) deviennent immédiatement exigibles.');
         }
-        y += 5;
+        y += secSp;
 
-        contractHeading('8', 'JURIDICTION');
-        bullet('Ce contrat est régi par les lois du Québec. Les tribunaux du district de Chicoutimi ont compétence exclusive pour tout litige.');
-        y += 14;
-
-        // Separator
-        doc.moveTo(marginLeft, y).lineTo(pageWidth - marginRight, y).lineWidth(0.5).stroke('#ddd');
+        heading('8', 'JURIDICTION');
+        bul('Ce contrat est régi par les lois du Québec. Les tribunaux du district de Chicoutimi ont compétence exclusive pour tout litige.');
         y += 12;
 
-        // Signature section
-        doc.fontSize(10).font('Helvetica-Bold').fillColor('#333').text('SIGNATURE DU CLIENT', marginLeft, y);
-        y += 16;
+        // === SIGNATURE DU CLIENT ===
+        doc.moveTo(M, y).lineTo(M + CW, y).lineWidth(0.5).stroke('#ddd');
+        y += 10;
 
-        doc.fontSize(8.5).font('Helvetica').fillColor('#444');
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#333')
+            .text('SIGNATURE DU CLIENT', M, y, { lineBreak: false });
+        y += 14;
+
+        doc.fontSize(8).font('Helvetica').fillColor('#555');
         if (hasPromo) {
-            doc.text('En signant ce document, je confirme:', marginLeft, y, { width: contentWidth });
-            y = doc.y + 2;
-            doc.text(`  •  Avoir lu et accepté l'intégralité des conditions générales ci-dessus.`, marginLeft, y, { width: contentWidth });
-            y = doc.y + 2;
-            doc.text(`  •  M'engager à acheter le volume minimal annuel de ${minOrderAmount}.`, marginLeft, y, { width: contentWidth });
-            y = doc.y + 2;
-            doc.text('  •  Accepter de payer la pénalité de 15% si je n\'atteins pas le volume minimal.', marginLeft, y, { width: contentWidth });
-            y = doc.y + 2;
-            doc.text('  •  Être autorisé(e) à engager l\'entreprise.', marginLeft, y, { width: contentWidth });
-            y = doc.y + 10;
+            const confirmText = `En signant, je confirme avoir lu et accepté les conditions ci-dessus, m'engager au volume minimal annuel de ${minOrderAmount}, accepter la pénalité de 15% en cas de non-atteinte, et être autorisé(e) à engager l'entreprise.`;
+            const confirmH = textH(confirmText, { width: CW });
+            doc.text(confirmText, M, y, { width: CW });
+            y += confirmH + 8;
         } else {
-            doc.text('En signant ce document, je confirme avoir lu et accepté l\'intégralité des conditions générales ci-dessus. Je confirme être autorisé(e) à engager l\'entreprise.', marginLeft, y, { width: contentWidth });
-            y = doc.y + 10;
+            const confirmText = 'En signant, je confirme avoir lu et accepté les conditions générales ci-dessus et être autorisé(e) à engager l\'entreprise.';
+            const confirmH = textH(confirmText, { width: CW });
+            doc.text(confirmText, M, y, { width: CW });
+            y += confirmH + 8;
         }
 
-        // Signature and date boxes side by side
-        const sigBoxW = 240;
-        const sigBoxH = 65;
-        const dateBoxX = marginLeft + sigBoxW + 30;
+        // Signature + Date boxes
+        const sBoxW = 220;
+        const sBoxH = 55;
+        const dBoxX = M + sBoxW + 24;
+        const dBoxW = CW - sBoxW - 24;
 
-        doc.roundedRect(marginLeft, y, sigBoxW, sigBoxH, 3).lineWidth(0.5).stroke('#ccc');
-        doc.fontSize(7).font('Helvetica').fillColor('#999').text('Signature', marginLeft + 8, y + sigBoxH - 12);
-
-        if (demande.signature && demande.signature.startsWith('data:image')) {
-            try {
-                const base64Data = demande.signature.replace(/^data:image\/png;base64,/, '');
-                const signatureBuffer = Buffer.from(base64Data, 'base64');
-                doc.image(signatureBuffer, marginLeft + 10, y + 3, { fit: [sigBoxW - 20, sigBoxH - 18] });
-            } catch (imgError) {
-                doc.fontSize(10).font('Helvetica-Oblique').fillColor('#999').text('[Signature électronique]', marginLeft + 50, y + 25);
-            }
-        } else {
-            doc.fontSize(16).font('Helvetica-Oblique').fillColor('#333').text(demande.signature || '', marginLeft + 12, y + 18);
-        }
+        // Signature box
+        doc.rect(M, y, sBoxW, sBoxH).lineWidth(0.5).stroke('#ccc');
+        drawSignature(M, y, sBoxW, sBoxH);
+        doc.fontSize(7).font('Helvetica').fillColor('#aaa')
+            .text('Signature du client', M + 6, y + sBoxH + 3, { lineBreak: false });
 
         // Date box
-        doc.roundedRect(dateBoxX, y, 180, sigBoxH, 3).lineWidth(0.5).stroke('#ccc');
-        doc.fontSize(7).font('Helvetica').fillColor('#999').text('Date', dateBoxX + 8, y + sigBoxH - 12);
-        doc.fontSize(11).font('Helvetica').fillColor('#333').text(dateCreation, dateBoxX + 12, y + 22);
+        doc.rect(dBoxX, y, dBoxW, sBoxH).lineWidth(0.5).stroke('#ccc');
+        doc.fontSize(10).font('Helvetica').fillColor('#333')
+            .text(dateCreation, dBoxX + 10, y + sBoxH / 2 - 5, { lineBreak: false });
+        doc.fontSize(7).font('Helvetica').fillColor('#aaa')
+            .text('Date', dBoxX + 6, y + sBoxH + 3, { lineBreak: false });
 
         // Footer page 2
-        doc.fontSize(7).font('Helvetica').fillColor('#bbb');
-        doc.text('9051-2500 QUÉBEC INC. faisant affaires sous le nom Les Jardins du Saguenay', marginLeft, 730, { width: contentWidth, align: 'center' });
-        doc.text('2380, rue Cantin, Saguenay, Québec, G7X 8S6 | 418 542-1797', marginLeft, 740, { width: contentWidth, align: 'center' });
-        doc.text('Page 2 sur 2', marginLeft, 750, { width: contentWidth, align: 'center' });
+        doc.fontSize(7).font('Helvetica').fillColor('#ccc');
+        doc.text('9051-2500 QUÉBEC INC. faisant affaires sous le nom Les Jardins du Saguenay', M, 730, { width: CW, align: 'center', lineBreak: false });
+        doc.text('2380, rue Cantin, Saguenay, Québec, G7X 8S6  •  418 542-1797', M, 740, { width: CW, align: 'center', lineBreak: false });
+        doc.text('Page 2 de 2', M, 750, { width: CW, align: 'center', lineBreak: false });
 
         doc.end();
 
