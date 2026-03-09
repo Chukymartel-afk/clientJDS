@@ -714,9 +714,8 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
         }
 
         const demande = result.rows[0];
-        const doc = new PDFDocument({ margin: 50 });
+        const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
 
-        // Set response headers for PDF download
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=demande-${demande.id}-${demande.company_name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
 
@@ -735,247 +734,300 @@ app.get('/api/demandes/:id/pdf', requireAuth, async (req, res) => {
             'autre': 'Autre'
         };
 
+        const hasPromo = demande.promo_accepted === 'yes';
+        const minOrderAmount = demande.promo_min_order || '$0';
+        const pageWidth = 612;
+        const marginLeft = 50;
+        const marginRight = 50;
+        const contentWidth = pageWidth - marginLeft - marginRight;
+
+        // Helper: draw a section header bar
+        function drawSectionHeader(text, y) {
+            doc.save();
+            doc.roundedRect(marginLeft, y, contentWidth, 24, 3).fill('#FF7A00');
+            doc.fontSize(10).font('Helvetica-Bold').fillColor('white').text(text, marginLeft + 10, y + 7, { width: contentWidth - 20 });
+            doc.restore();
+            doc.fillColor('#333');
+            return y + 32;
+        }
+
+        // Helper: draw a field row (label: value)
+        function drawField(label, value, x, y, labelWidth) {
+            labelWidth = labelWidth || 160;
+            doc.fontSize(10).font('Helvetica').fillColor('#666').text(label, x, y, { width: labelWidth });
+            doc.font('Helvetica-Bold').fillColor('#333').text(value || '—', x + labelWidth, y, { width: contentWidth - labelWidth - (x - marginLeft) });
+            return y + 18;
+        }
+
         // =====================================================
-        // PAGE 1: SOMMAIRE DES INFORMATIONS
+        // PAGE 1: FICHE CLIENT
         // =====================================================
 
-        // Header
-        doc.fontSize(24).font('Helvetica-Bold').fillColor('#FF7A00').text('Les Jardins du Saguenay', { align: 'center' });
-        doc.fontSize(12).font('Helvetica').fillColor('black').text('Distributeur alimentaire depuis plus de 40 ans', { align: 'center' });
-        doc.moveDown(0.5);
-        doc.fontSize(18).font('Helvetica-Bold').fillColor('#333').text('FICHE CLIENT', { align: 'center' });
-        doc.moveDown(1);
+        // Top orange accent bar
+        doc.rect(0, 0, pageWidth, 6).fill('#FF7A00');
 
-        // Info box
-        doc.fontSize(10).fillColor('gray');
-        doc.text(`Date de la demande: ${dateCreation}`, { align: 'right' });
-        doc.text(`Numéro de dossier: ${demande.id}`, { align: 'right' });
-        doc.text(`Statut: ${demande.status === 'approuvee' ? 'Approuvé' : demande.status === 'refusee' ? 'Refusé' : 'En attente'}`, { align: 'right' });
-        doc.moveDown(2);
+        // Company header
+        doc.fontSize(22).font('Helvetica-Bold').fillColor('#FF7A00').text('Les Jardins du Saguenay', marginLeft, 30, { align: 'center', width: contentWidth });
+        doc.fontSize(9).font('Helvetica').fillColor('#999').text('Distributeur alimentaire depuis plus de 40 ans', marginLeft, 56, { align: 'center', width: contentWidth });
 
-        // Section: Informations de l'entreprise
-        doc.fontSize(14).font('Helvetica-Bold').fillColor('#FF7A00').text('INFORMATIONS DE L\'ENTREPRISE');
-        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke('#FF7A00');
-        doc.moveDown(0.5);
-        doc.fillColor('black').font('Helvetica');
+        // Thin separator
+        doc.moveTo(marginLeft + 150, 74).lineTo(pageWidth - marginRight - 150, 74).lineWidth(0.5).stroke('#ddd');
 
-        doc.fontSize(11);
-        doc.text(`Nom de l'entreprise: `, { continued: true }).font('Helvetica-Bold').text(demande.company_name);
-        doc.font('Helvetica').text(`Propriétaire: `, { continued: true }).font('Helvetica-Bold').text(demande.owner_name);
+        // Document title + meta info
+        doc.fontSize(16).font('Helvetica-Bold').fillColor('#333').text('FICHE CLIENT', marginLeft, 86, { width: contentWidth });
+        doc.fontSize(9).font('Helvetica').fillColor('#999');
+        doc.text(`Dossier #${demande.id}`, marginLeft, 88, { width: contentWidth, align: 'right' });
+        doc.text(dateCreation, marginLeft, 100, { width: contentWidth, align: 'right' });
+
+        // Status badge
+        const statusText = demande.status === 'approuvee' ? 'Approuvé' : demande.status === 'refusee' ? 'Refusé' : 'En attente';
+        const statusColor = demande.status === 'approuvee' ? '#22c55e' : demande.status === 'refusee' ? '#ef4444' : '#f59e0b';
+        const statusWidth = doc.widthOfString(statusText) + 16;
+        const statusX = pageWidth - marginRight - statusWidth;
+        doc.roundedRect(statusX, 112, statusWidth, 18, 9).fill(statusColor);
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('white').text(statusText, statusX, 116, { width: statusWidth, align: 'center' });
+
+        // Horizontal line under header
+        doc.moveTo(marginLeft, 140).lineTo(pageWidth - marginRight, 140).lineWidth(1).stroke('#eee');
+
+        // SECTION: Entreprise
+        let y = drawSectionHeader('INFORMATIONS DE L\'ENTREPRISE', 152);
+        y = drawField('Nom de l\'entreprise', demande.company_name, marginLeft, y);
+        y = drawField('Propriétaire', demande.owner_name, marginLeft, y);
         if (demande.contact_name && demande.contact_name !== demande.owner_name) {
-            doc.font('Helvetica').text(`Personne contact: `, { continued: true }).font('Helvetica-Bold').text(demande.contact_name);
+            y = drawField('Personne contact', demande.contact_name, marginLeft, y);
         }
-        doc.font('Helvetica').text(`Adresse: `, { continued: true }).font('Helvetica-Bold').text(`${demande.address}, ${demande.city}, ${demande.postal_code}`);
-        doc.moveDown(1.5);
+        y = drawField('Adresse', `${demande.address}, ${demande.city}, ${demande.postal_code}`, marginLeft, y);
+        y += 12;
 
-        // Section: Activité
-        doc.fontSize(14).font('Helvetica-Bold').fillColor('#FF7A00').text('ACTIVITÉ');
-        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke('#FF7A00');
-        doc.moveDown(0.5);
-        doc.fillColor('black').font('Helvetica');
-
-        doc.fontSize(11);
-        doc.text(`Secteur d'activité: `, { continued: true }).font('Helvetica-Bold').text(sectorLabels[demande.sector] || demande.sector);
-        doc.font('Helvetica').text(`Volume d'achat annuel estimé: `, { continued: true }).font('Helvetica-Bold').text(`$${demande.annual_purchase}`);
-
-        if (demande.promo_accepted === 'yes') {
-            doc.font('Helvetica').text(`Programme promo 2%: `, { continued: true }).font('Helvetica-Bold').fillColor('#22c55e').text(`Accepté (min. ${demande.promo_min_order}/an)`);
-            doc.fillColor('black');
+        // SECTION: Activité
+        y = drawSectionHeader('ACTIVITÉ', y);
+        y = drawField('Secteur d\'activité', sectorLabels[demande.sector] || demande.sector, marginLeft, y);
+        y = drawField('Volume d\'achat annuel estimé', `${demande.annual_purchase}`, marginLeft, y);
+        if (hasPromo) {
+            doc.fontSize(10).font('Helvetica').fillColor('#666').text('Programme ristourne 2%', marginLeft, y, { width: 160 });
+            doc.font('Helvetica-Bold').fillColor('#22c55e').text(`Accepté (min. ${minOrderAmount}/an)`, marginLeft + 160, y);
+            doc.fillColor('#333');
+            y += 18;
         }
-        doc.moveDown(1.5);
+        y += 12;
 
-        // Section: Coordonnées
-        doc.fontSize(14).font('Helvetica-Bold').fillColor('#FF7A00').text('COORDONNÉES');
-        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke('#FF7A00');
-        doc.moveDown(0.5);
-        doc.fillColor('black').font('Helvetica');
+        // SECTION: Coordonnées
+        y = drawSectionHeader('COORDONNÉES', y);
+        y = drawField('Courriel responsable', demande.email_responsable, marginLeft, y);
+        y = drawField('Courriel facturation', demande.email_facturation, marginLeft, y);
+        y = drawField('Téléphone', demande.phone, marginLeft, y);
+        y += 12;
 
-        doc.fontSize(11);
-        doc.text(`Courriel responsable: `, { continued: true }).font('Helvetica-Bold').text(demande.email_responsable);
-        doc.font('Helvetica').text(`Courriel facturation: `, { continued: true }).font('Helvetica-Bold').text(demande.email_facturation);
-        doc.font('Helvetica').text(`Téléphone: `, { continued: true }).font('Helvetica-Bold').text(demande.phone);
-        doc.moveDown(2);
+        // SECTION: Signature
+        y = drawSectionHeader('SIGNATURE', y);
 
-        // Section: Aperçu signature
-        doc.fontSize(14).font('Helvetica-Bold').fillColor('#FF7A00').text('SIGNATURE');
-        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke('#FF7A00');
-        doc.moveDown(0.5);
-        doc.fillColor('black');
-
-        const sigPreviewY = doc.y;
-        doc.rect(50, sigPreviewY, 200, 60).stroke('#ccc');
+        // Signature box
+        doc.roundedRect(marginLeft, y, 220, 70, 3).lineWidth(1).stroke('#ddd');
 
         if (demande.signature && demande.signature.startsWith('data:image')) {
             try {
                 const base64Data = demande.signature.replace(/^data:image\/png;base64,/, '');
                 const signatureBuffer = Buffer.from(base64Data, 'base64');
-                doc.image(signatureBuffer, 55, sigPreviewY + 5, { width: 190, height: 50, fit: [190, 50] });
+                doc.image(signatureBuffer, marginLeft + 10, y + 5, { fit: [200, 60] });
             } catch (imgError) {
-                doc.fontSize(10).font('Helvetica-Oblique').text('[Signature]', 100, sigPreviewY + 20);
+                doc.fontSize(10).font('Helvetica-Oblique').fillColor('#999').text('[Signature]', marginLeft + 70, y + 28);
             }
         } else {
-            doc.fontSize(14).font('Helvetica-Oblique').text(demande.signature || '', 60, sigPreviewY + 20);
+            doc.fontSize(16).font('Helvetica-Oblique').fillColor('#333').text(demande.signature || '', marginLeft + 15, y + 22);
         }
 
-        doc.y = sigPreviewY + 70;
-        doc.fontSize(9).fillColor('gray').text(`Signé électroniquement le ${dateCreation}`);
+        // Date beside signature
+        doc.fontSize(9).font('Helvetica').fillColor('#666').text('Signé électroniquement le', marginLeft + 240, y + 20);
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#333').text(dateCreation, marginLeft + 240, y + 34);
 
         // Footer page 1
-        doc.fontSize(8).fillColor('gray');
-        doc.text('Les Jardins du Saguenay - 418 542-1797 - lesjardinsdusaguenay.com', 50, 750, { align: 'center' });
-        doc.text('Page 1 sur 2', { align: 'center' });
+        doc.fontSize(7).font('Helvetica').fillColor('#bbb');
+        doc.text('Les Jardins du Saguenay | 418 542-1797 | lesjardinsdusaguenay.com', marginLeft, 740, { width: contentWidth, align: 'center' });
+        doc.text('Page 1 sur 2', marginLeft, 752, { width: contentWidth, align: 'center' });
 
         // =====================================================
-        // PAGE 2: CONTRAT - CONDITIONS GÉNÉRALES
+        // PAGE 2: CONDITIONS GÉNÉRALES
         // =====================================================
         doc.addPage();
 
-        const hasPromo = demande.promo_accepted === 'yes';
-        const minOrderAmount = demande.promo_min_order || '$0';
+        // Top accent bar
+        doc.rect(0, 0, pageWidth, 6).fill('#FF7A00');
 
-        // Header page 2
-        doc.fontSize(20).font('Helvetica-Bold').fillColor('#FF7A00').text('Les Jardins du Saguenay', { align: 'center' });
+        // Header
+        doc.fontSize(18).font('Helvetica-Bold').fillColor('#FF7A00').text('Les Jardins du Saguenay', marginLeft, 24, { width: contentWidth, align: 'center' });
         doc.moveDown(0.3);
 
+        doc.fontSize(13).font('Helvetica-Bold').fillColor('#333').text('CONDITIONS GÉNÉRALES D\'APPROVISIONNEMENT', marginLeft, 48, { width: contentWidth, align: 'center' });
+
+        // Client info bar
+        let infoBarY = 72;
+        const infoBarHeight = hasPromo ? 48 : 32;
+        doc.roundedRect(marginLeft, infoBarY, contentWidth, infoBarHeight, 4).fill('#f8f8f8');
+        doc.roundedRect(marginLeft, infoBarY, contentWidth, infoBarHeight, 4).lineWidth(0.5).stroke('#e0e0e0');
+
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#333');
+        doc.text(`Client: ${demande.company_name}`, marginLeft + 12, infoBarY + 8);
+        doc.font('Helvetica').fillColor('#666');
+        doc.text(`Dossier #${demande.id} — ${dateCreation}`, marginLeft + 12, infoBarY + 8, { width: contentWidth - 24, align: 'right' });
+
         if (hasPromo) {
-            doc.fontSize(14).font('Helvetica-Bold').fillColor('#333').text('CONDITIONS GÉNÉRALES D\'APPROVISIONNEMENT', { align: 'center' });
-            doc.fontSize(12).fillColor('#22c55e').text('PROGRAMME ACHAT MINIMUM AVEC RISTOURNE 2%', { align: 'center' });
+            doc.fontSize(9).font('Helvetica-Bold').fillColor('#FF7A00');
+            doc.text(`Engagement d'achat minimum: ${minOrderAmount}/an — Ristourne: 2%`, marginLeft + 12, infoBarY + 26);
+        }
+
+        y = infoBarY + infoBarHeight + 14;
+
+        // Contract body font size
+        const bodySize = 8.5;
+        const headingSize = 9.5;
+        const lineHeight = 13;
+
+        // Helper: contract section heading
+        function contractHeading(num, title, color) {
+            doc.fontSize(headingSize).font('Helvetica-Bold').fillColor(color || '#333').text(`${num}${num ? '. ' : ''}${title}`, marginLeft, y);
+            y = doc.y + 3;
+        }
+
+        // Helper: contract bullet
+        function bullet(text) {
+            doc.fontSize(bodySize).font('Helvetica').fillColor('#444');
+            doc.text(`  •  ${text}`, marginLeft, y, { width: contentWidth, lineGap: 1 });
+            y = doc.y + 2;
+        }
+
+        // Promo-specific clauses
+        if (hasPromo) {
+            // Engagement box
+            doc.roundedRect(marginLeft, y, contentWidth, 0.1, 0).fill('white'); // dummy to not affect y
+            const engStartY = y;
+            doc.save();
+            doc.roundedRect(marginLeft, engStartY - 2, 4, 52, 2).fill('#FF7A00');
+            doc.restore();
+
+            contractHeading('', 'ENGAGEMENT D\'ACHAT MINIMUM', '#FF7A00');
+            bullet(`Vous vous engagez à acheter un volume minimal annuel de ${minOrderAmount} de Produits.`);
+            bullet('En contrepartie, vous bénéficiez d\'une ristourne de 2% sur tous vos achats pendant 12 mois.');
+            bullet('Cet engagement débute à la date de création de votre compte pour une période de 12 mois.');
+            y += 6;
+
+            // Penalty box
+            const penStartY = y;
+            doc.save();
+            doc.roundedRect(marginLeft, penStartY - 2, 4, 68, 2).fill('#dc2626');
+            doc.restore();
+
+            contractHeading('', 'PÉNALITÉ SI VOLUME NON ATTEINT', '#dc2626');
+            bullet(`Si vous n'atteignez pas le volume minimal de ${minOrderAmount} à la fin des 12 mois, vous devrez payer une pénalité de 15% du volume minimal non atteint.`);
+            bullet('Cette pénalité sera calculée à la fin de la période et payable dans les 30 jours.');
+            bullet(`Exemple: Si vous achetez 30 000$ sur un engagement de 40 000$, la pénalité sera de 15% x 10 000$ = 1 500$.`);
+            y += 8;
+        }
+
+        // Standard conditions
+        contractHeading('1', 'COMMANDES');
+        bullet('Vous commandez les Produits par bon de commande électronique sur notre plateforme.');
+        bullet('Nous confirmons votre commande par courriel dans les 1 heures ouvrables.');
+        bullet('Tous les prix sont selon notre liste de prix en vigueur (taxes en sus).');
+        y += 5;
+
+        contractHeading('2', 'MODIFICATION ET ANNULATION');
+        bullet('Vous pouvez modifier ou annuler votre commande jusqu\'à 24 heures avant la livraison.');
+        bullet(hasPromo
+            ? 'Annulation tardive ou refus de livraison: frais de désengagement de 10% du montant.'
+            : 'Annulation tardive ou refus de livraison: frais de désengagement de 50$.');
+        y += 5;
+
+        contractHeading('3', 'LIVRAISON');
+        bullet('Nous livrons les Produits à l\'adresse indiquée sur votre commande.');
+        bullet('Les frais de livraison sont facturés en sus selon notre grille tarifaire.');
+        bullet('Vous devenez propriétaire et responsable des Produits dès leur livraison.');
+        y += 5;
+
+        contractHeading('4', 'QUALITÉ');
+        bullet('Les Produits sont emballés selon les règles de l\'art.');
+        bullet('Nous garantissons que les Produits sont aptes à la consommation à la date de livraison.');
+        y += 5;
+
+        contractHeading('5', 'PAIEMENT');
+        bullet('Le paiement est dû dans les 14 jours suivant la réception de la facture.');
+        bullet('En cas de retard: intérêts au taux préférentiel bancaire plus 15% par année.');
+        bullet('Solde impayé depuis plus de 30 jours: paiement à la livraison exigé.');
+        if (hasPromo) {
+            bullet('En cas de non-paiement, la ristourne de 2% sera annulée rétroactivement.');
+        }
+        y += 5;
+
+        contractHeading('6', 'CONFIDENTIALITÉ');
+        bullet('Toutes les informations relatives à nos prix et opérations sont confidentielles.');
+        y += 5;
+
+        contractHeading('7', 'RÉSILIATION');
+        bullet('Nous pouvons résilier votre compte sans avis en cas de non-paiement, manquement aux conditions, insolvabilité ou acte criminel.');
+        if (hasPromo) {
+            bullet('En cas de résiliation, toutes les sommes dues (incluant les pénalités) deviennent immédiatement exigibles.');
+        }
+        y += 5;
+
+        contractHeading('8', 'JURIDICTION');
+        bullet('Ce contrat est régi par les lois du Québec. Les tribunaux du district de Chicoutimi ont compétence exclusive pour tout litige.');
+        y += 14;
+
+        // Separator
+        doc.moveTo(marginLeft, y).lineTo(pageWidth - marginRight, y).lineWidth(0.5).stroke('#ddd');
+        y += 12;
+
+        // Signature section
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#333').text('SIGNATURE DU CLIENT', marginLeft, y);
+        y += 16;
+
+        doc.fontSize(8.5).font('Helvetica').fillColor('#444');
+        if (hasPromo) {
+            doc.text('En signant ce document, je confirme:', marginLeft, y, { width: contentWidth });
+            y = doc.y + 2;
+            doc.text(`  •  Avoir lu et accepté l'intégralité des conditions générales ci-dessus.`, marginLeft, y, { width: contentWidth });
+            y = doc.y + 2;
+            doc.text(`  •  M'engager à acheter le volume minimal annuel de ${minOrderAmount}.`, marginLeft, y, { width: contentWidth });
+            y = doc.y + 2;
+            doc.text('  •  Accepter de payer la pénalité de 15% si je n\'atteins pas le volume minimal.', marginLeft, y, { width: contentWidth });
+            y = doc.y + 2;
+            doc.text('  •  Être autorisé(e) à engager l\'entreprise.', marginLeft, y, { width: contentWidth });
+            y = doc.y + 10;
         } else {
-            doc.fontSize(16).font('Helvetica-Bold').fillColor('#333').text('CONDITIONS GÉNÉRALES D\'APPROVISIONNEMENT', { align: 'center' });
-        }
-        doc.moveDown(0.5);
-
-        // Client info box
-        doc.roundedRect(50, doc.y, 500, hasPromo ? 65 : 50, 5).fillAndStroke('#f5f5f5', '#ddd');
-        doc.fillColor('black').fontSize(10);
-        doc.text(`Client: ${demande.company_name}`, 60, doc.y - (hasPromo ? 55 : 40));
-        doc.text(`Dossier #${demande.id} - ${dateCreation}`, 60, doc.y - (hasPromo ? 40 : 25));
-        if (hasPromo) {
-            doc.font('Helvetica-Bold').fillColor('#FF7A00').text(`Engagement d'achat minimum: ${minOrderAmount}/an - Ristourne: 2%`, 60, doc.y - 25);
-        }
-        doc.y += hasPromo ? 30 : 20;
-        doc.moveDown(1);
-
-        // Conditions générales complètes
-        doc.fillColor('black').font('Helvetica');
-        doc.fontSize(9);
-
-        // Si programme promo accepté, ajouter les clauses spécifiques EN PREMIER
-        if (hasPromo) {
-            doc.font('Helvetica-Bold').fillColor('#FF7A00').text('ENGAGEMENT D\'ACHAT MINIMUM', { underline: false });
-            doc.fillColor('black').font('Helvetica');
-            doc.text(`• Vous vous engagez à acheter un volume minimal annuel de ${minOrderAmount} de Produits.`);
-            doc.text('• En contrepartie, vous bénéficiez d\'une ristourne de 2% sur tous vos achats pendant 12 mois.');
-            doc.text('• Cet engagement débute à la date de création de votre compte pour une période de 12 mois.');
-            doc.moveDown(0.5);
-
-            doc.font('Helvetica-Bold').fillColor('#c00').text('PÉNALITÉ SI VOLUME NON ATTEINT');
-            doc.fillColor('black').font('Helvetica');
-            doc.text(`• Si vous n'atteignez pas le volume minimal de ${minOrderAmount} à la fin des 12 mois,`);
-            doc.text('  vous devrez payer une pénalité de 15% du volume minimal non atteint.');
-            doc.text('• Cette pénalité sera calculée à la fin de la période et payable dans les 30 jours.');
-            doc.text('• Exemple: Si vous achetez 30 000$ sur un engagement de 40 000$, la pénalité sera de');
-            doc.text('  15% x 10 000$ = 1 500$.');
-            doc.moveDown(0.5);
+            doc.text('En signant ce document, je confirme avoir lu et accepté l\'intégralité des conditions générales ci-dessus. Je confirme être autorisé(e) à engager l\'entreprise.', marginLeft, y, { width: contentWidth });
+            y = doc.y + 10;
         }
 
-        doc.font('Helvetica-Bold').fillColor('black').text('1. COMMANDES', { underline: false });
-        doc.font('Helvetica').text('• Vous commandez les Produits par bon de commande électronique sur notre plateforme.');
-        doc.text('• Nous confirmons votre commande par courriel dans les 1 heures ouvrables.');
-        doc.text('• Tous les prix sont selon notre liste de prix en vigueur (taxes en sus).');
-        doc.moveDown(0.5);
+        // Signature and date boxes side by side
+        const sigBoxW = 240;
+        const sigBoxH = 65;
+        const dateBoxX = marginLeft + sigBoxW + 30;
 
-        doc.font('Helvetica-Bold').text('2. MODIFICATION ET ANNULATION');
-        doc.font('Helvetica').text('• Vous pouvez modifier ou annuler votre commande jusqu\'à 24 heures avant la livraison.');
-        if (hasPromo) {
-            doc.text('• Annulation tardive ou refus de livraison: frais de désengagement de 10% du montant.');
-        } else {
-            doc.text('• Annulation tardive ou refus de livraison: frais de désengagement de 50$.');
-        }
-        doc.moveDown(0.5);
-
-        doc.font('Helvetica-Bold').text('3. LIVRAISON');
-        doc.font('Helvetica').text('• Nous livrons les Produits à l\'adresse indiquée sur votre commande.');
-        doc.text('• Les frais de livraison sont facturés en sus selon notre grille tarifaire.');
-        doc.text('• Vous devenez propriétaire et responsable des Produits dès leur livraison.');
-        doc.moveDown(0.5);
-
-        doc.font('Helvetica-Bold').text('4. QUALITÉ');
-        doc.font('Helvetica').text('• Les Produits sont emballés selon les règles de l\'art.');
-        doc.text('• Nous garantissons que les Produits sont aptes à la consommation à la date de livraison.');
-        doc.moveDown(0.5);
-
-        doc.font('Helvetica-Bold').text('5. PAIEMENT');
-        doc.font('Helvetica').text('• Le paiement est dû dans les 14 jours suivant la réception de la facture.');
-        doc.text('• En cas de retard: intérêts au taux préférentiel bancaire plus 15% par année.');
-        doc.text('• Solde impayé depuis plus de 30 jours: paiement à la livraison exigé.');
-        if (hasPromo) {
-            doc.text('• En cas de non-paiement, la ristourne de 2% sera annulée rétroactivement.');
-        }
-        doc.moveDown(0.5);
-
-        doc.font('Helvetica-Bold').text('6. CONFIDENTIALITÉ');
-        doc.font('Helvetica').text('• Toutes les informations relatives à nos prix et opérations sont confidentielles.');
-        doc.moveDown(0.5);
-
-        doc.font('Helvetica-Bold').text('7. RÉSILIATION');
-        doc.font('Helvetica').text('• Nous pouvons résilier votre compte sans avis en cas de non-paiement, manquement aux');
-        doc.text('  conditions, insolvabilité ou acte criminel.');
-        if (hasPromo) {
-            doc.text('• En cas de résiliation, toutes les sommes dues (incluant les pénalités) deviennent');
-            doc.text('  immédiatement exigibles.');
-        }
-        doc.moveDown(0.5);
-
-        doc.font('Helvetica-Bold').text('8. JURIDICTION');
-        doc.font('Helvetica').text('• Ce contrat est régi par les lois du Québec. Les tribunaux du district de Chicoutimi');
-        doc.text('  ont compétence exclusive pour tout litige.');
-        doc.moveDown(1);
-
-        // Section signature finale
-        doc.fontSize(11).font('Helvetica-Bold').fillColor('#333').text('SIGNATURE DU CLIENT');
-        doc.moveDown(0.5);
-
-        doc.fontSize(9).font('Helvetica').fillColor('black');
-        if (hasPromo) {
-            doc.text('En signant ce document, je confirme:');
-            doc.text(`• Avoir lu et accepté l'intégralité des conditions générales ci-dessus.`);
-            doc.text(`• M'engager à acheter le volume minimal annuel de ${minOrderAmount}.`);
-            doc.text('• Accepter de payer la pénalité de 15% si je n\'atteins pas le volume minimal.');
-            doc.text('• Être autorisé(e) à engager l\'entreprise.');
-        } else {
-            doc.text('En signant ce document, je confirme avoir lu et accepté l\'intégralité des conditions');
-            doc.text('générales ci-dessus. Je confirme être autorisé(e) à engager l\'entreprise.');
-        }
-        doc.moveDown(1);
-
-        // Signature box
-        const signatureBoxY = doc.y;
-        doc.rect(50, signatureBoxY, 250, 80).stroke();
+        doc.roundedRect(marginLeft, y, sigBoxW, sigBoxH, 3).lineWidth(0.5).stroke('#ccc');
+        doc.fontSize(7).font('Helvetica').fillColor('#999').text('Signature', marginLeft + 8, y + sigBoxH - 12);
 
         if (demande.signature && demande.signature.startsWith('data:image')) {
             try {
                 const base64Data = demande.signature.replace(/^data:image\/png;base64,/, '');
                 const signatureBuffer = Buffer.from(base64Data, 'base64');
-                doc.image(signatureBuffer, 55, signatureBoxY + 5, { width: 240, height: 70, fit: [240, 70] });
+                doc.image(signatureBuffer, marginLeft + 10, y + 3, { fit: [sigBoxW - 20, sigBoxH - 18] });
             } catch (imgError) {
-                doc.fontSize(12).font('Helvetica-Oblique').text('[Signature électronique]', 60, signatureBoxY + 30);
+                doc.fontSize(10).font('Helvetica-Oblique').fillColor('#999').text('[Signature électronique]', marginLeft + 50, y + 25);
             }
         } else {
-            doc.fontSize(18).font('Helvetica-Oblique').text(demande.signature || '', 60, signatureBoxY + 25);
+            doc.fontSize(16).font('Helvetica-Oblique').fillColor('#333').text(demande.signature || '', marginLeft + 12, y + 18);
         }
 
-        // Date à côté de la signature
-        doc.fontSize(10).font('Helvetica').text('Date:', 320, signatureBoxY + 20);
-        doc.text(dateCreation, 320, signatureBoxY + 35);
-
-        doc.y = signatureBoxY + 100;
+        // Date box
+        doc.roundedRect(dateBoxX, y, 180, sigBoxH, 3).lineWidth(0.5).stroke('#ccc');
+        doc.fontSize(7).font('Helvetica').fillColor('#999').text('Date', dateBoxX + 8, y + sigBoxH - 12);
+        doc.fontSize(11).font('Helvetica').fillColor('#333').text(dateCreation, dateBoxX + 12, y + 22);
 
         // Footer page 2
-        doc.fontSize(8).fillColor('gray');
-        doc.text('9051-2500 QUÉBEC INC. faisant affaires sous le nom Les Jardins du Saguenay', 50, 730, { align: 'center' });
-        doc.text('2380, rue Cantin, Saguenay, Québec, G7X 8S6 | 418 542-1797', { align: 'center' });
-        doc.text('Page 2 sur 2', { align: 'center' });
+        doc.fontSize(7).font('Helvetica').fillColor('#bbb');
+        doc.text('9051-2500 QUÉBEC INC. faisant affaires sous le nom Les Jardins du Saguenay', marginLeft, 730, { width: contentWidth, align: 'center' });
+        doc.text('2380, rue Cantin, Saguenay, Québec, G7X 8S6 | 418 542-1797', marginLeft, 740, { width: contentWidth, align: 'center' });
+        doc.text('Page 2 sur 2', marginLeft, 750, { width: contentWidth, align: 'center' });
 
         doc.end();
 
